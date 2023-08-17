@@ -1,0 +1,180 @@
+module STI_DAC(clk ,reset, load, pi_data, pi_length, pi_fill, pi_msb, pi_low, pi_end,
+	       so_data, so_valid,
+	       oem_finish, oem_dataout, oem_addr,
+	       odd1_wr, odd2_wr, odd3_wr, odd4_wr, even1_wr, even2_wr, even3_wr, even4_wr);
+
+input		clk, reset;
+input		load, pi_msb, pi_low, pi_end; 
+input	[15:0]	pi_data;
+input	[1:0]	pi_length;
+input		pi_fill;
+output		so_data, so_valid;
+
+output  oem_finish, odd1_wr, odd2_wr, odd3_wr, odd4_wr, even1_wr, even2_wr, even3_wr, even4_wr;
+output [4:0] oem_addr;
+output [7:0] oem_dataout;
+
+//==============================================================================
+//STI
+//state logic
+reg [2:0]current_state;
+reg [2:0]next_state;
+reg [1:0]start_en;
+reg [31:0]data_buffer;
+reg [4:0]serial_counter;
+reg [4:0]index;
+reg So_Data;
+reg So_Valid;
+parameter IDLE = 3'd0;
+parameter LOAD = 3'd1;
+parameter start= 3'd2;
+parameter finish= 3'd3;
+always@(posedge clk or posedge reset) begin
+	if(reset) current_state <= IDLE;
+	else current_state <= next_state;
+end
+always@(*) begin
+	case(current_state)
+	IDLE:                       //reset
+		begin
+		next_state <= LOAD;
+		start_en <= 0;
+		end
+	LOAD:                       //load
+		begin
+		if(load)begin
+			next_state <= LOAD;
+			start_en <= 0;
+		end
+		else begin
+			next_state <= start;
+			start_en <= 1;
+		end
+		end
+	start:                      //serial start transmission
+		begin
+		if(serial_counter)begin
+			next_state <= start;
+			start_en <= 1;
+		end
+		else if(serial_counter == 5'd0)begin
+			next_state <= IDLE;
+			start_en <= 0;
+		end
+		else if(serial_counter == 5'd0&&pi_end==1'd1) next_state <= finish;
+		end
+	finish:
+		begin
+		next_state <= finish;
+		end
+	endcase		
+end
+
+//data transform
+always@(*)
+begin
+	case(pi_length)  //input pi_length  00:pi_low ,10 11:pi_fill
+	2'b00:
+	begin
+		if(pi_low) 
+		begin
+			data_buffer[31:24] = pi_data[15:8];
+			data_buffer[23:0] = 24'd0;
+		end
+		else
+		begin
+			data_buffer[31:24] = pi_data[7:0];
+			data_buffer[23:0] = 24'd0;
+		end
+	end
+	2'b01: //16bit
+	begin
+		data_buffer[31:16] = pi_data[15:0];
+		data_buffer[15:0] = 16'd0;
+	end
+	2'b10: //24bit
+	begin
+		if(pi_fill)
+		begin
+			data_buffer[31:16] = pi_data[15:0];
+			data_buffer[15:0] = 16'd0;
+		end
+		else 
+		begin
+			data_buffer[31:24] = 8'd0;
+			data_buffer[23:8] = pi_data[15:0];
+			data_buffer[7:0] = 8'd0;
+		end
+	end
+	2'b11: //32bit
+	begin
+		if(pi_fill)
+		begin
+			data_buffer[31:16] = pi_data[15:0];
+			data_buffer[15:0] = 16'd0;
+		end
+		else
+		begin
+			data_buffer[31:16] = 16'd0;
+			data_buffer[15:0] = pi_data[15:0];
+		end
+	end
+	default: data_buffer = 32'd0;
+	endcase
+end
+//data_buffer_index for so_data and pi_msb
+//////////////************************************//////////////////////
+always@(*) begin
+	if(reset) index <= 5'd31;
+	else if(next_state==LOAD)begin
+		if(pi_msb) index <= 5'd31;
+		else begin
+			case(pi_length)
+				2'b00: index <= 5'd24;
+				2'b01: index <= 5'd16; 
+				2'b10: index <= 5'd8;
+				2'b11: index <= 5'd0;
+			endcase
+		end
+		end
+	else if(start_en)begin
+		if(pi_msb)index<=index-5'd1;
+		else index <= index+5'd1;
+	end
+end
+//////////////************************************//////////////////////
+//so_valid
+assign so_valid = So_Valid;
+always@(*) begin
+	if(reset) So_Valid <= 1'd0;
+	else if(start_en) So_Valid <= 1'd1;
+	else So_Valid <= 1'd0;
+end
+//so_data
+assign so_data = So_Data;
+always@(*) begin
+	if(reset) So_Data <= 1'd0;
+	else if(so_valid)begin
+	So_Data <= data_buffer[index];
+	end
+end
+//serial_counter 
+always@(*) begin
+	if(reset) serial_counter <= 5'd0;
+	else if(next_state == LOAD) begin
+		case(pi_length)
+			2'b00: serial_counter <= 5'd7;
+			2'b01: serial_counter <= 5'd15; 
+			2'b10: serial_counter <= 5'd23;
+			2'b11: serial_counter <= 5'd31;
+		endcase
+	end
+	else if(start_en)serial_counter <= serial_counter - 5'd1;
+end
+
+
+
+
+
+
+endmodule
