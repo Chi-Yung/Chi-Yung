@@ -208,6 +208,7 @@ always@(posedge clk or posedge reset) begin
 	else if(So_Valid) begin
 		mem_counter <= mem_counter + 4'd1;
 	end
+	else if(pi_end == 1 && current_state == finish) mem_counter <= mem_counter + 4'd1;
 end
 //mem address counter
 always@(posedge clk or posedge reset) begin
@@ -233,17 +234,11 @@ always@(posedge clk or posedge reset) begin
 	end
 	else if(mem_counter == 7)begin
 		even_EN <= 1'd1;
-		odd_EN <= 1'd0;
 	end
 	else if(mem_counter == 15)begin
 		odd_EN <= 1'd1;
-		even_EN <= 1'd0;
 	end
-	else if(mem_counter < 7) begin
-		odd_EN <= 1'd0;
-		even_EN <=1'd0;
-	end
-	else if(mem_counter <15&&mem_counter>7) begin
+	else begin
 		odd_EN <= 1'd0;
 		even_EN <=1'd0;
 	end
@@ -260,19 +255,15 @@ always@(posedge clk or posedge reset) begin
 	end
 	else if(mem_address_counter <= 8'd63 && mem_address_counter_16bits <= 4'd7 && even_EN == 1'd1)begin 
 		odd1_wr <= 1'd1;
-		even1_wr <= 1'd0;
 	end
 	else if(mem_address_counter <= 8'd63 &&  mem_address_counter_16bits <= 4'd15 && odd_EN == 1'd1)begin
 		odd1_wr <= 1'd1;
-		even1_wr <= 1'd0;
 	end
 	else if(mem_address_counter <= 8'd63 && mem_address_counter_16bits <= 4'd7 && odd_EN == 1'd1)begin
 		even1_wr<= 1'd1;
-		odd1_wr <= 1'd0;
 	end
 	else if(mem_address_counter <= 8'd63 && mem_address_counter_16bits <= 4'd15 && even_EN == 1'd1)begin
 		even1_wr<=1'd1;
-		odd1_wr <= 1'd0;
 	end
 	else begin
 		odd1_wr <= 1'd0;
@@ -291,19 +282,15 @@ always@(posedge clk or posedge reset) begin
 	end
 	else if(mem_address_counter > 8'd63 && mem_address_counter <= 8'd127 && mem_address_counter_16bits <= 4'd7 && even_EN == 1'd1)begin
 		odd2_wr<= 1'd1;
-		even2_wr<= 1'd0;
 	end
 	else if(mem_address_counter > 8'd63 && mem_address_counter <= 8'd127 && mem_address_counter_16bits <= 4'd15 && odd_EN == 1'd1)begin
 		odd2_wr<= 1'd1;
-		even2_wr<= 1'd0;
 	end
 	else if(mem_address_counter > 8'd63 && mem_address_counter <= 8'd127 && mem_address_counter_16bits <= 4'd7 && odd_EN == 1'd1)begin
 		even2_wr<= 1'd1;
-		odd2_wr<= 1'd0;
 	end
 	else if(mem_address_counter > 8'd63 && mem_address_counter <= 8'd127 && mem_address_counter_16bits <= 4'd15 && even_EN == 1'd1)begin
 		even2_wr<= 1'd1;
-		odd2_wr<= 1'd0;
 	end
 	else begin
 		odd2_wr <= 1'd0;
@@ -322,19 +309,15 @@ always@(posedge clk or posedge reset) begin
 	end
 	else if(mem_address_counter > 8'd127 && mem_address_counter <= 8'd191 && mem_address_counter_16bits <= 4'd7 && even_EN == 1'd1)begin
 		odd3_wr<=1'd1;
-		even3_wr <= 1'd0;
 	end
 	else if(mem_address_counter > 8'd127 && mem_address_counter <= 8'd191 && mem_address_counter_16bits <= 4'd15 && odd_EN == 1'd1)begin
 		odd3_wr<=1'd1;
-		even3_wr <= 1'd0;
 	end
 	else if(mem_address_counter > 8'd127 && mem_address_counter <= 8'd191 && mem_address_counter_16bits <= 4'd7 && odd_EN == 1'd1)begin
 		even3_wr<=1'd1;
-		odd3_wr <= 1'd0;
 	end
 	else if(mem_address_counter > 8'd127 && mem_address_counter <= 8'd191 && mem_address_counter_16bits <= 4'd15 && even_EN == 1'd1)begin
 		even3_wr<=1'd1;
-		odd3_wr <= 1'd0;
 	end
 	else begin
 		odd3_wr <= 1'd0;
@@ -353,19 +336,15 @@ always@(posedge clk or posedge reset) begin
 	end
 	else if(mem_address_counter > 8'd191 && mem_address_counter <= 8'd255 && mem_address_counter_16bits <= 4'd7 && even_EN == 1'd1)begin
 		odd4_wr<=1'd1;
-		even4_wr <= 1'd0;
 	end
 	else if(mem_address_counter > 8'd191 && mem_address_counter <= 8'd255 && mem_address_counter_16bits <= 4'd15 && odd_EN == 1'd1)begin
 		odd4_wr<=1'd1;
-		even4_wr <= 1'd0;
 	end
 	else if(mem_address_counter > 8'd191 && mem_address_counter <= 8'd255 && mem_address_counter_16bits <= 4'd7 && odd_EN == 1'd1)begin
 		even4_wr<=1'd1;
-		odd4_wr <= 1'd0;
 	end
 	else if(mem_address_counter > 8'd191 && mem_address_counter <= 8'd255 && mem_address_counter_16bits <= 4'd15 && even_EN == 1'd1)begin
 		even4_wr<= 1'd1;
-		odd4_wr <= 1'd0;
 	end
 	else begin
 		odd4_wr <= 1'd0;
@@ -375,7 +354,7 @@ end
 //oem_finish
 always@(posedge clk or posedge reset) begin
 	if(reset) oem_finish <= 1'd0;
-	else if(pi_end == 1'd1 && mem_address_counter == 8'd0 && mem_counter == 4'd0)oem_finish <= 1'd1;
+	else if(pi_end == 1'd1 && mem_address_counter == 8'd0 && mem_counter == 4'd0&& current_state == finish)oem_finish <= 1'd1;
 	
 end
 endmodule
