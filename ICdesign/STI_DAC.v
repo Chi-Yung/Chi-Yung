@@ -25,23 +25,18 @@ reg [4:0]serial_counter;
 reg [4:0]index;
 reg so_data;
 parameter IDLE = 3'd0;
-parameter first = 3'd1;
-parameter LOAD = 3'd2;
-parameter start= 3'd3;
-parameter finish= 3'd4;
+parameter LOAD = 3'd1;
+parameter start= 3'd2;
+parameter finish= 3'd3;
 always@(posedge clk or posedge reset) begin
 	if(reset)begin
-		current_state <= first;
+		current_state <= IDLE;
 	end
 	else current_state <= next_state;
 end
-always@(*) begin
+always@(*) begin 
 	case(current_state)
 	IDLE:                       
-		begin
-		next_state = IDLE;
-		end
-	first:                      //reset
 		begin
 		next_state = LOAD;
 		end
@@ -54,7 +49,7 @@ always@(*) begin
 		begin
 		if(serial_counter == 5'd0&&pi_end==1'd1)next_state <= finish;	//serial transmission finish
 		else if(serial_counter == 5'd0)begin  //testbench 
-			next_state = first;
+			next_state = IDLE;
 		end
 		else begin
 			next_state = start;  //serial transmission 
@@ -139,6 +134,7 @@ always@(posedge clk or posedge reset) begin
 		if(pi_msb)index <= index-5'd1;
 		else index <= index+5'd1;
 	end
+	else index <= index;
 end
 
 //////////////************************************//////////////////////
@@ -166,6 +162,7 @@ always@(posedge clk or posedge reset) begin
 	end
 	else if(current_state == start)serial_counter <= serial_counter - 5'd1;
 	else if(current_state == finish)serial_counter <= 5'd0;
+	else serial_counter <= serial_counter;
 end
 //
 ///
@@ -190,6 +187,7 @@ always@(posedge clk or posedge reset) begin
 		DAC_buffer[0] <= so_data; 
 	end
 	else if(pi_end)DAC_buffer <= 8'd0;
+	else DAC_buffer <= DAC_buffer;
 end
 //oem_dataout
 assign oem_dataout = DAC_buffer;
@@ -198,6 +196,7 @@ assign oem_dataout = DAC_buffer;
 always@(posedge clk or posedge reset) begin
 	if(reset) delay_counter <= 5'd0;
 	else if(mem_counter == 4'd15)delay_counter <= delay_counter + 5'd1;
+	else delay_counter <= delay_counter;
 end
 always@(posedge clk or posedge reset) begin
 	if(reset) oem_addr <= 5'd0;
@@ -211,6 +210,7 @@ always@(posedge clk or posedge reset) begin
 		mem_counter <= mem_counter + 4'd1;
 	end
 	else if(pi_end == 1'd1 && current_state == finish) mem_counter <= mem_counter + 4'd1;
+	else mem_counter <= mem_counter;
 end
 //mem address counter
 always@(posedge clk or posedge reset) begin
@@ -218,6 +218,7 @@ always@(posedge clk or posedge reset) begin
 	else if(mem_counter == 4'd7 || mem_counter == 4'd15) begin
 		mem_address_counter <= mem_address_counter + 8'd1;
 	end
+	else mem_address_counter <= mem_address_counter;
 end
 //mem address counter 16bits
 always@(posedge clk or posedge reset) begin
@@ -225,6 +226,7 @@ always@(posedge clk or posedge reset) begin
 	else if(mem_counter == 4'd7 || mem_counter == 4'd15) begin
 		mem_address_counter_16bits <= mem_address_counter_16bits + 4'd1;
 	end
+	else mem_address_counter_16bits <= mem_address_counter_16bits;
 end
 //odd_even_enable
 /*always@(posedge clk or posedge reset) begin
@@ -356,6 +358,6 @@ end
 always@(posedge clk or posedge reset) begin
 	if(reset) oem_finish <= 1'd0;
 	else if(pi_end == 1'd1 && mem_address_counter == 8'd0)oem_finish <= 1'd1;
-	
+	else oem_finish <= oem_finish;
 end
 endmodule
