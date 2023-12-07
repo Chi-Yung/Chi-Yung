@@ -14,8 +14,8 @@ module uart_rx(
     parameter SAMP = 2'b10;
     reg [3:0] data_in;
     // UART Configure Defination
-	 parameter BAUD_MAX   = 5208;// clk / baud_rate
-		reg [12:0] baud_cnt;
+	 parameter BAUD_MAX   = 10416;// clk / baud_rate
+		reg [13:0] baud_cnt;
 		parameter START_BIT = 1;
 		parameter DATA_BIT  = 8;
 		parameter STOP_BIT  = 1;
@@ -36,11 +36,11 @@ module uart_rx(
 
 always @ (posedge clk or negedge rst_n)begin
     if (!rst_n) begin
-        baud_cnt <= 13'd0;
+        baud_cnt <= 14'd0;
     end
     else begin
         if (sample_en) begin
-            if (baud_cnt == BAUD_MAX) baud_cnt <= 13'd0;
+            if (baud_cnt == BAUD_MAX) baud_cnt <= 14'd0;
             else baud_cnt <= baud_cnt + 1'b1;
         end
         else baud_cnt <= 13'd0;
@@ -127,7 +127,7 @@ always @ (posedge clk or negedge rst_n)begin
                 end
             end
             default: begin
-                data_out <= 10'bx;
+                data_out <= 8'b1;
                 sample_finish <= 1'b0;
                 sample_en <= 1'b0;
             end

@@ -8,21 +8,21 @@ module uart_rx_tb;
 	reg rx;
  
 	// Outputs
-	wire [3:0] data_out;
+	//wire [3:0] data_out;
 	wire [7:0] data;
 	wire [7:0] ot7seg;
-	wire otbaud_clk;
-	wire [12:0]otbaud_cnt;
+	//wire otbaud_clk;
+	//wire [12:0]otbaud_cnt;
 	// Instantiate the Unit Under Test (UUT)
 	TOP ttop (
 		.clk(clk), 
 		.rst_n(rst_n), 
 		.rx(rx), 
-		.oDEC(data_out),
+		//.oDEC(data_out),
 		.oRXdata(data),
-		.ot7seg(ot7seg),
-		.otbaud_clk(otbaud_clk),
-		.otbaud_cnt(otbaud_cnt)
+		.ot7seg(ot7seg)
+		//.otbaud_clk(otbaud_clk),
+		//.otbaud_cnt(otbaud_cnt)
 	);
 initial clk = 1;
 
@@ -33,6 +33,8 @@ always #(`clk_period/2) clk = ~clk;
 		clk = 0;
 		rst_n = 0;
 		rx = 1;
+ 
+		// Wait 100 ns for global reset to finish
 		#20;
         
 		// Add stimulus here
@@ -40,7 +42,7 @@ always #(`clk_period/2) clk = ~clk;
         
         #20;
         // Generate Start bit
-        #104166 rx = 1'b0;//104166" represents the time duration for storing 1 bit of data for 50Mhz clk, measured in nanoseconds (ns)."
+        #104166 rx = 1'b0;
         // 8 data bits
         #104166 rx = 1'b0;
         #104166 rx = 1'b0;
@@ -53,7 +55,7 @@ always #(`clk_period/2) clk = ~clk;
         // Generate Stop bit
         #104166 rx = 1'b1;
 
-		  #104166;       
+		  #20;       
 		// Add stimulus here
 
         // Generate Start bit
@@ -83,7 +85,6 @@ always #(`clk_period/2) clk = ~clk;
         #104166 rx = 1'b0;
         // Generate Stop bit
         #104166 rx = 1'b1;
-		  #104166
 		  #104166 $finish;
 	end
       
