@@ -1,6 +1,5 @@
 `timescale 1ns / 1ps
-`define clk_period 20
-`define bit_time (1 / 9600)
+`define clk_period 10
 module uart_rx_tb;
  
 	// Inputs
@@ -34,8 +33,6 @@ always #(`clk_period/2) clk = ~clk;
 		clk = 0;
 		rst_n = 0;
 		rx = 1;
- 
-		// Wait 100 ns for global reset to finish
 		#20;
         
 		// Add stimulus here
@@ -43,50 +40,51 @@ always #(`clk_period/2) clk = ~clk;
         
         #20;
         // Generate Start bit
-        #`bit_time rx = 1'b0;
+        #104166 rx = 1'b0;//104166" represents the time duration for storing 1 bit of data for 50Mhz clk, measured in nanoseconds (ns)."
         // 8 data bits
-        #`bit_time rx = 1'b0;
-        #`bit_time rx = 1'b0;
-        #`bit_time rx = 1'b1;
-        #`bit_time rx = 1'b0;
-        #`bit_time rx = 1'b1;
-        #`bit_time rx = 1'b1;
-        #`bit_time rx = 1'b0;
-        #`bit_time rx = 1'b0;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
         // Generate Stop bit
-        #`bit_time rx = 1'b1;
+        #104166 rx = 1'b1;
 
-		  #20;       
+		  #104166;       
 		// Add stimulus here
 
         // Generate Start bit
-        #`bit_time rx = 1'b0;
+        #104166 rx = 1'b0;
         // 8 data bits
-        #`bit_time rx = 1'b0;
-        #`bit_time rx = 1'b0;
-        #`bit_time rx = 1'b0;
-        #`bit_time rx = 1'b1;
-        #`bit_time rx = 1'b1;
-        #`bit_time rx = 1'b1;
-        #`bit_time rx = 1'b0;
-        #`bit_time rx = 1'b0;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
         // Generate Stop bit
-        #`bit_time rx = 1'b1;
+        #104166 rx = 1'b1;
 		  #20;
 		  // Generate Start bit
-        #`bit_time rx = 1'b0;
+        #104166 rx = 1'b0;
         // 8 data bits
-        #`bit_time rx = 1'b0;
-        #`bit_time rx = 1'b1;
-        #`bit_time rx = 1'b0;
-        #`bit_time rx = 1'b0;
-        #`bit_time rx = 1'b1;
-        #`bit_time rx = 1'b1;
-        #`bit_time rx = 1'b0;
-        #`bit_time rx = 1'b0;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
         // Generate Stop bit
-        #`bit_time rx = 1'b1;
-		  #500 $finish;
+        #104166 rx = 1'b1;
+		  #104166
+		  #104166 $finish;
 	end
       
 endmodule
