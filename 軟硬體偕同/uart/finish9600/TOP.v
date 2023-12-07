@@ -11,6 +11,7 @@ module TOP(
 );
 wire [7:0] oRx_data;
 wire clkout_1s;
+wire [3:0] oDEC;
 assign oRXdata = oRx_data;
 /*clk_1s U3(
 		.clk(clk),
