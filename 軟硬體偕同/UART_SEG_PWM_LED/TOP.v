@@ -1,7 +1,9 @@
 module TOP(clk,reset);
 input clk;
 input reset;
-//input RX;
+input RX;
+  output [20:0] SEG
+  output [7:0] LED
 wire [1:0]wRate;
 MODE_CONTROL(
 .clk(clk),
