@@ -31,12 +31,12 @@ end
 reg [3:0] NKcounter;
 always@(*) begin
 				if(reset) NKcounter <= 4'd0; 
-				else if(NKcounter == 4'd15)NKcounter <= 4'd0;
+	else if(NKcounter == 4'd14)NKcounter <= 4'd0;
 				else NKcounter = NKcounter + 4'd1;
 end
 always@(*) begin
 			if(reset) counter <= 12'd0;      
-			else if(NKcounter == 4'd15) counter = counter + 12'd1;
+	else if(NKcounter == 4'd14) counter = counter + 12'd1;
 			else counter <= counter;
 end
 
