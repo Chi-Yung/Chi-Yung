@@ -1,7 +1,7 @@
-module MODE_CONTROL(clk,reset,idata,oSTART,orate_control);
+module MODE_CONTROL(clk,reset,idata,oSTART,orate_control,oData);
 input clk,reset;
 input [7:0] idata;
-//output reg[7:0] odata;
+output [7:0] oData;
 output reg oSTART;
 output [1:0]orate_control;
 
@@ -11,7 +11,10 @@ parameter NORMAL = 2'd2;
 
 reg [2:0] current_state,next_state;
 reg [1:0] rate_control;
+reg [7:0] data_buffer;
+reg [7:0] Data;
 assign orate_control = rate_control;
+assign oData = Data;
 always @ (posedge clk or negedge reset)begin
     if(!reset)
         current_state <= IDLE;
@@ -23,18 +26,26 @@ always @ (*)begin
             IDLE : begin
 					if(!reset)next_state = IDLE;
 					else if(idata == 8'b01001101 || idata == 8'b01101101)next_state = START_CONTROL;//m or M
-					else begin 
+					else if(idata != 8'b01001101 || idata != 8'b01101101 || idata != 8'b00000000 || idata != 8'b01000110 || idata != 8'b01100110)begin
+						data_buffer = idata;
+						next_state = NORMAL;
+					end
+					else begin
 						next_state = IDLE;
 					end
             end
             START_CONTROL : begin
-					if(idata == 8'b01000110 || idata == 8'b01100110)next_state = NORMAL;//f or F					
+					if(idata == 8'b01000110 || idata == 8'b01100110)next_state = IDLE;//f or F					
 					else begin
 					next_state = START_CONTROL;
 					end
             end
 				NORMAL:begin
+					if(idata == 8'b01001101 || idata == 8'b01101101)next_state = START_CONTROL;//m or M
+					else begin
+					Data = data_buffer;
 					next_state = IDLE;
+					end
 				end
 				default : next_state = IDLE;
         endcase
@@ -47,9 +58,9 @@ always@(*)begin
 	else if(next_state == START_CONTROL)begin
 		oSTART <= 1'b0;
 		case(idata)
-			8'b00110001:rate_control <=2'b00; //1
-			8'b00110101:rate_control <=2'b01; //5
-			8'b01000001:rate_control <=2'b10; //A
+			8'b00110001:rate_control <= 2'b00; //1
+			8'b00110101:rate_control <= 2'b01; //5
+			8'b01000001:rate_control <= 2'b10; //A
 		default: rate_control <= 2'b11;
 		endcase
 	end
