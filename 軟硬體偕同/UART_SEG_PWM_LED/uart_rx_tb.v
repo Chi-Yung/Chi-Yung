@@ -12,6 +12,7 @@ module uart_rx_tb;
 	wire [1:0] oRate;
 	wire [7:0] owData;
 	wire  owSTART;
+	wire owClk1s;
 	//wire otbaud_clk;
 	//wire [12:0]otbaud_cnt;
 	// Instantiate the Unit Under Test (UUT)
@@ -23,8 +24,8 @@ module uart_rx_tb;
 		//.oDEC(data_out),
 		.oRate(oRate),
 		.owSTART(owSTART),
-		.owData(owData)
-		//.otbaud_cnt(otbaud_cnt)
+		.owData(owData),
+		.owClk1s(owClk1s)
 	);
 initial clk = 1;
 

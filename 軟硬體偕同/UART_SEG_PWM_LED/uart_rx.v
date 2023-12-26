@@ -107,7 +107,7 @@ always @ (posedge clk or negedge rst_n)begin
                     recv_cnt  <= 4'b0;
 						end
 						else begin
-                    sample_en <= 1'b1;//rx inut data into  data_temp,recv_cnt <= recv_cnt + 1'b1;for 8-N-1(10bots)
+                    sample_en <= 1'b1;//rx input data into  data_temp,recv_cnt <= recv_cnt + 1'b1;for 8-N-1(10bots)
                     if (baud_clk) begin//
                         data_out <= data_out;
                         data_temp[recv_cnt] <= rx;

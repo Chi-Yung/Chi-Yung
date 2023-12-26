@@ -26,8 +26,7 @@ always @ (*)begin
             IDLE : begin
 					if(!reset)next_state = IDLE;
 					else if(idata == 8'b01001101 || idata == 8'b01101101)next_state = START_CONTROL;//m or M
-					else if(idata != 8'b01001101 || idata != 8'b01101101 || idata != 8'b00000000 || idata != 8'b01000110 || idata != 8'b01100110)begin
-						data_buffer = idata;
+					else if(idata != 8'b01001101 && idata != 8'b01101101 && idata != 8'b00000000 && idata != 8'b01000110 && idata != 8'b01100110)begin
 						next_state = NORMAL;
 					end
 					else begin
@@ -43,12 +42,28 @@ always @ (*)begin
 				NORMAL:begin
 					if(idata == 8'b01001101 || idata == 8'b01101101)next_state = START_CONTROL;//m or M
 					else begin
-					Data = data_buffer;
 					next_state = IDLE;
 					end
 				end
 				default : next_state = IDLE;
         endcase
+end
+always@(*)begin
+	if(!reset)begin
+		data_buffer <= 8'b0;
+	end
+	else if(current_state == IDLE)begin
+		if(idata == 8'b01001101 || idata == 8'b01101101 || idata == 8'b00000000 || idata == 8'b01000110 || idata == 8'b01100110)begin
+			data_buffer <= data_buffer;
+		end
+		else data_buffer <= idata;
+	end
+	else if(current_state == NORMAL)begin
+		if(idata == 8'b01001101 || idata == 8'b01101101)begin
+			data_buffer = data_buffer;
+		end
+		else Data <= data_buffer;
+	end
 end
 always@(*)begin
 	if(!reset)begin
