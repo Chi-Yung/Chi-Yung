@@ -55,26 +55,22 @@ always @ (*)begin
 end
 always@(*)begin
 	if(!reset)begin
-		data_buffer = 8'bx;
-		Data = 8'bx;
+		data_buffer <= 8'bx;
+		Data <= 8'bx;
 		//roWRen = 1'b0;
 	end
-	else if(next_state == IDLE)begin
-		roWRen = 1'b0;
-		if(idata != 8'b01001101 && idata != 8'b01101101 && idata != 8'b00000000 && idata != 8'b01000110 && idata != 8'b01100110)begin
-			data_buffer = idata;
-		end
-		else begin
-			data_buffer = 8'bx;
-		end
+	else if(current_state == IDLE)begin
+		roWRen <= 1'b0;
+		data_buffer <= idata;
+
 	end
-	else if(next_state == NORMAL)begin
-		Data = data_buffer;
-		data_buffer = 8'bx;
-		roWRen = 1;
+	else if(current_state == NORMAL)begin
+		Data <= data_buffer;
+		//data_buffer = 8'bx;
+		roWRen <= 1;
 	end 
 	else if(next_state == START_CONTROL)begin
-		roWRen = 0;
+		roWRen <= 0;
 	end
 end
 always@(*)begin
