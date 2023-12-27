@@ -92,7 +92,7 @@ always @ (posedge clk or negedge rst_n)begin
     else begin
         case (next_state)
             IDLE : begin
-                //data_out  <= 10'bx;
+                data_out  <= 8'bx;
                 data_temp <= 10'bx;
                 sample_finish <= 1'b0;
                 sample_en <= 1'b0;
