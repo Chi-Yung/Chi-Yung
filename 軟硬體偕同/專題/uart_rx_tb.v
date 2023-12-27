@@ -51,9 +51,9 @@ always #(`clk_period/2) clk = ~clk;
         // Generate Start bit
         #104166 rx = 1'b0;
         // 8 data bits
-        #104166 rx = 1'b0;
-        #104166 rx = 1'b0;
         #104166 rx = 1'b1;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
         #104166 rx = 1'b0;
         #104166 rx = 1'b1;
         #104166 rx = 1'b1;
@@ -66,8 +66,8 @@ always #(`clk_period/2) clk = ~clk;
 		  #104166 rx = 1'b0;
         // 8 data bits
         #104166 rx = 1'b0;
-        #104166 rx = 1'b0;
         #104166 rx = 1'b1;
+        #104166 rx = 1'b0;
         #104166 rx = 1'b0;
         #104166 rx = 1'b1;
         #104166 rx = 1'b1;
@@ -80,8 +80,8 @@ always #(`clk_period/2) clk = ~clk;
         // 8 data bits
         #104166 rx = 1'b1;
         #104166 rx = 1'b1;
-        #104166 rx = 1'b1;
-        #104166 rx = 1'b1;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
         #104166 rx = 1'b1;
         #104166 rx = 1'b1;
         #104166 rx = 1'b0;

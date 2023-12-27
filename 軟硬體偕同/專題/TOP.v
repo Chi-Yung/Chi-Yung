@@ -24,6 +24,9 @@ wire [7:0] oRXDATA;
 wire [7:0] wData;
 wire wClk1s;
 wire wFIFO_FULL;
+wire wFIFO_EMPTY;
+wire [7:0]wrDATA;
+wire wren;
 //wire [3:0] wDEC;
 wire woWRen;
 assign oRate = wRate;
@@ -58,22 +61,26 @@ fifo U3(
 .clk(clk), 
 .rstn(reset), 
 .wr_en(woWRen), 
-.rd_en(0), 
+.rd_en(wren), 
 .wr_data(wData), 
-.rd_data(), 
+.rd_data(wrDATA), 
 .fifo_full(wFIFO_FULL), 
-.fifo_empty()
-);
-/*scroller U3(
-.clk(wClk1s),
-.rst(reset),
-.i_start(wSTART), //enable
-.DEC(wDEC),
-.wr_en(),
-.DECO()
+.fifo_empty(wFIFO_EMPTY)
 );
 asc_to_dec U4(
-.iASC(wData),
+.iASC(wrDATA),
+.iFIFO_FULL(wFIFO_FULL),
+.iFIFO_EMPTY(wFIFO_EMPTY),
+.oFIFO_RD(wren),
 .oDec(wDEC)
+);
+/*scroller U5(
+.clk(wClk1s),
+.rst(reset),
+.i_start(), //enable
+.DEC(wDEC),
+.wr_en(wren),
+.DECO()
 );*/
+
 endmodule
