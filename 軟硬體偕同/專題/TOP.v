@@ -7,7 +7,10 @@ module TOP(
 		owData,
 		owClk1s,
 		oWRen,
-		oFIFO_FULL
+		oFIFO_FULL,
+		seg1,
+		seg2,
+		seg3
 	);
 input clk;
 input reset;
@@ -18,6 +21,7 @@ output [7:0]owData;
 output owClk1s;
 output oWRen;
 output oFIFO_FULL;
+output [6:0] seg1,seg2,seg3;
 wire [1:0]wRate;
 wire wSTART;
 wire [7:0] oRXDATA; 
@@ -27,8 +31,9 @@ wire wFIFO_FULL;
 wire wFIFO_EMPTY;
 wire [7:0]wrDATA;
 wire wren;
-//wire [3:0] wDEC;
+wire [3:0] wDEC;
 wire woWRen;
+wire [3:0] wDECo1,wDECo2,wDECo3;
 assign oRate = wRate;
 assign owSTART = wSTART;
 assign owData = wData;
@@ -74,13 +79,31 @@ asc_to_dec U4(
 .oFIFO_RD(wren),
 .oDec(wDEC)
 );
-/*scroller U5(
-.clk(wClk1s),
+scroller U5(
+.clk(clk),
+.iDIV_clk(wClk1s),
 .rst(reset),
-.i_start(), //enable
+//.i_start(), //enable
 .DEC(wDEC),
-.wr_en(wren),
-.DECO()
-);*/
-
+.iRD(wren),
+.DECO({wDECo3,wDECo2,wDECo1})
+);
+DEC2SEG U6(
+.clk(clk),
+.rst(rst),
+.iDEC(wDECo1),
+.seg(seg1)
+);
+DEC2SEG U7(
+.clk(clk),
+.rst(rst),
+.iDEC(wDECo2),
+.seg(seg2)
+);
+DEC2SEG U8(
+.clk(clk),
+.rst(rst),
+.iDEC(wDECo3),
+.seg(seg3)
+);
 endmodule
