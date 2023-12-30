@@ -10,7 +10,8 @@ module TOP(
 		oFIFO_FULL,
 		seg1,
 		seg2,
-		seg3
+		seg3,
+		oTXDATA
 	);
 input clk;
 input reset;
@@ -22,6 +23,7 @@ output owClk1s;
 output oWRen;
 output oFIFO_FULL;
 output [6:0] seg1,seg2,seg3;
+output oTXDATA;
 wire [1:0]wRate;
 wire wSTART;
 wire [7:0] oRXDATA; 
@@ -34,6 +36,10 @@ wire wren;
 wire [3:0] wDEC;
 wire woWRen;
 wire [3:0] wDECo1,wDECo2,wDECo3;
+wire wTX_BAUD_clk;
+wire wtX_FIFO_en;
+wire wTX_RATE_STATE;
+wire [7:0]wTX_DATA;
 assign oRate = wRate;
 assign owSTART = wSTART;
 assign owData = wData;
@@ -47,7 +53,8 @@ MODE_CONTROL U0(
 .oSTART(wSTART),
 .orate_control(wRate),
 .oData(wData),
-.oWRen(woWRen)
+.oWRen(woWRen),
+.oTX_RATE_STATE(wTX_RATE_STATE)
 );
 uart_rx U1(
 .clk(clk),
@@ -90,20 +97,40 @@ scroller U5(
 );
 DEC2SEG U6(
 .clk(clk),
-.rst(rst),
+.rst(reset),
 .iDEC(wDECo1),
 .seg(seg1)
 );
 DEC2SEG U7(
 .clk(clk),
-.rst(rst),
+.rst(reset),
 .iDEC(wDECo2),
 .seg(seg2)
 );
 DEC2SEG U8(
 .clk(clk),
-.rst(rst),
+.rst(reset),
 .iDEC(wDECo3),
 .seg(seg3)
+);
+UART_TX_BAUD_GEN U9(
+.clk(clk),
+.reset(reset),
+.iTX_en(wTX_RATE_STATE),
+.oTX_BAUD_clk(wTX_BAUD_clk),
+.otX_FIFO_en(wtX_FIFO_en)
+);
+UART_TX U10(
+.clk(clk),
+.reset(reset),
+.iTX_BAUD_clk(wTX_BAUD_clk),
+.iTX_FIFO_DATA(wTX_DATA),
+.oTX_DATA(oTXDATA)
+);
+TX_DATA_MEM U11(
+.clk(clk),
+.reset(reset),
+.iTX_RATE_STATE(wtX_FIFO_en),
+.oTX_DATA_MEM(wTX_DATA)
 );
 endmodule

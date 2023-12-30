@@ -1,11 +1,11 @@
-module MODE_CONTROL(clk,reset,idata,oSTART,orate_control,oData,oWRen);
+module MODE_CONTROL(clk,reset,idata,oSTART,orate_control,oData,oWRen,oTX_RATE_STATE);
 input clk,reset;
 input [7:0] idata;
 output [7:0] oData;
 output reg oSTART;
 output [1:0]orate_control;
 output oWRen;
-
+output oTX_RATE_STATE;
 parameter IDLE = 2'd0;
 parameter START_CONTROL = 2'd1;
 parameter NORMAL = 2'd2;
@@ -15,9 +15,11 @@ reg [1:0] rate_control;
 reg [7:0] data_buffer;
 reg [7:0] Data;
 reg roWRen;
+reg rTX_RATE_STATE;
 assign oWRen = roWRen;
 assign orate_control = rate_control;
 assign oData = Data;
+assign oTX_RATE_STATE = rTX_RATE_STATE;
 always @ (posedge clk or negedge reset)begin
     if(!reset)
         current_state <= IDLE;
@@ -57,29 +59,32 @@ always@(*)begin
 	if(!reset)begin
 		data_buffer <= 8'bx;
 		Data <= 8'bx;
-		//roWRen = 1'b0;
 	end
 	else if(current_state == IDLE)begin
 		roWRen <= 1'b0;
-		data_buffer <= idata;
-
+		Data <= 8'bx;
+		if(idata == 8'b01001101 || idata == 8'b01101101 || idata == 8'b01000110 || idata == 8'b01100110)data_buffer <= 8'bx;
+		else data_buffer <= idata;
 	end
 	else if(current_state == NORMAL)begin
 		Data <= data_buffer;
-		//data_buffer = 8'bx;
 		roWRen <= 1;
 	end 
-	else if(next_state == START_CONTROL)begin
+	else if(current_state == START_CONTROL)begin
 		roWRen <= 0;
+		Data <= 8'bx;
+		//rTX_RATE_STATE <= 1'b1;
 	end
 end
 always@(*)begin
 	if(!reset)begin
 		oSTART = 1'b0;
 		rate_control = 2'd0;
+		rTX_RATE_STATE = 1'b0;
 	end
 	else if(next_state == START_CONTROL)begin
 		oSTART = 1'b0;
+		rTX_RATE_STATE = 1'b1;
 		case(idata)
 			8'b00110001:rate_control = 2'b00; //1
 			8'b00110101:rate_control = 2'b01; //5
@@ -88,8 +93,9 @@ always@(*)begin
 		endcase
 	end
 	else begin 
-		rate_control = rate_control;
+		rate_control <= rate_control;
 		oSTART = 1'b1;
+		rTX_RATE_STATE = 1'b0;
 	end
 end
 endmodule
