@@ -131,6 +131,7 @@ TX_DATA_MEM U11(
 .clk(clk),
 .reset(reset),
 .iTX_RATE_STATE(wtX_FIFO_en),
+.iRATE(wRate),
 .oTX_DATA_MEM(wTX_DATA)
 );
 endmodule
