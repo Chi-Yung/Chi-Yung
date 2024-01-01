@@ -36,7 +36,9 @@ module fifo(clk, rstn, wr_en, rd_en, wr_data, rd_data, fifo_full, fifo_empty);
         if(!rstn)
             wr_ptr <= 0;
         else if(wr_en && !fifo_full)    //写使能，且fifo未写满
-            wr_ptr <= wr_ptr + 1;
+            wr_ptr <= wr_ptr + 3'd1;
+		  else if(fifo_full)    //写使能，且fifo未写满
+            wr_ptr <= 3'd0;
         else
             wr_ptr <= wr_ptr;
     end
@@ -47,6 +49,8 @@ module fifo(clk, rstn, wr_en, rd_en, wr_data, rd_data, fifo_full, fifo_empty);
             rd_ptr <= 0;
         else if(rd_en && !fifo_empty)   //读使能，且fifo不为空
             rd_ptr <= rd_ptr + 1;
+		  else if(fifo_empty)   //读使能，且fifo不为空
+            rd_ptr <= 3'd0;
         else
             rd_ptr <= rd_ptr;
     end

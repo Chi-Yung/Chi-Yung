@@ -9,12 +9,7 @@ module uart_rx_tb;
  
 	// Outputs
 	//wire [3:0] data_out;
-	wire [1:0] oRate;
-	wire [7:0] owData;
-	wire  owSTART;
-	wire owClk1s;
-	wire oWRen;
-	wire oFIFO_FULL;
+
 	//wire otbaud_clk;
 	//wire [12:0]otbaud_cnt;
 	// Instantiate the Unit Under Test (UUT)
@@ -22,14 +17,9 @@ module uart_rx_tb;
 	TOP ttop (
 		.clk(clk), 
 		.reset(rst_n), 
-		.RX(rx), 
+		.RX(rx)
 		//.oDEC(data_out),
-		.oRate(oRate),
-		.owSTART(owSTART),
-		.owData(owData),
-		.owClk1s(owClk1s),
-		.oWRen(oWRen),
-		.oFIFO_FULL(oFIFO_FULL)
+		
 	);
 initial clk = 1;
 
@@ -48,6 +38,18 @@ always #(`clk_period/2) clk = ~clk;
         rst_n = 1;
         
         #20;
+		  #104166 rx = 1'b0;
+        // 8 data bits
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
+        // Generate Stop bit
+        #104166 rx = 1'b1;
         // Generate Start bit
         #104166 rx = 1'b0;
         // 8 data bits
@@ -63,18 +65,7 @@ always #(`clk_period/2) clk = ~clk;
         #104166 rx = 1'b1;
 
 		  		  
-		  #104166 rx = 1'b0;
-        // 8 data bits
-        #104166 rx = 1'b0;
-        #104166 rx = 1'b1;
-        #104166 rx = 1'b0;
-        #104166 rx = 1'b0;
-        #104166 rx = 1'b1;
-        #104166 rx = 1'b1;
-        #104166 rx = 1'b0;
-        #104166 rx = 1'b0;
-        // Generate Stop bit
-        #104166 rx = 1'b1;
+		  
 		  
 		  #104166 rx = 1'b0;
         // 8 data bits
@@ -211,6 +202,67 @@ always #(`clk_period/2) clk = ~clk;
 		   #104166
 		  #104166
 		  #104166
+		  #20;
+		  
+		  #104166 rx = 1'b0;
+        // 8 data bits
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
+        // Generate Stop bit
+        #104166 rx = 1'b1;   
+		  #104166 rx = 1'b0;
+        // 8 data bits
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
+        // Generate Stop bit
+        #104166 rx = 1'b1;
+        // Generate Start bit
+        #104166 rx = 1'b0;
+        // 8 data bits
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b1;
+        #104166 rx = 1'b0;
+        #104166 rx = 1'b0;
+        // Generate Stop bit
+        #104166 rx = 1'b1;
+   #104166
+		  #104166
+		  #104166
+		   #104166
+		  #104166
+		  #104166
+		   #104166
+		  #104166
+		  #104166
+		   #104166
+		  #104166
+		  #104166
+		   #104166
+		  #104166
+		  #104166
+		   #104166
+		  #104166
+		  		  
+		  
+		  
+		     
+		// Add stimulus here
 		  
 		  #104166 $finish;
 	end

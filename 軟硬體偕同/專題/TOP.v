@@ -2,12 +2,6 @@ module TOP(
 		clk, 
 		reset, 
 		RX, 
-		oRate,
-		owSTART,
-		owData,
-		owClk1s,
-		oWRen,
-		oFIFO_FULL,
 		seg1,
 		seg2,
 		seg3,
@@ -16,14 +10,10 @@ module TOP(
 input clk;
 input reset;
 input RX;
-output [1:0]oRate;
-output owSTART;
-output [7:0]owData;
-output owClk1s;
-output oWRen;
-output oFIFO_FULL;
+
 output [6:0] seg1,seg2,seg3;
 output oTXDATA;
+
 wire [1:0]wRate;
 wire wSTART;
 wire [7:0] oRXDATA; 
@@ -40,12 +30,7 @@ wire wTX_BAUD_clk;
 wire wtX_FIFO_en;
 wire wTX_RATE_STATE;
 wire [7:0]wTX_DATA;
-assign oRate = wRate;
-assign owSTART = wSTART;
-assign owData = wData;
-assign owClk1s = wClk1s;
-assign oWRen = woWRen;
-assign oFIFO_FULL = wFIFO_FULL;
+
 MODE_CONTROL U0(
 .clk(clk),
 .reset(reset),
