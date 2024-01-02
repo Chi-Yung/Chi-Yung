@@ -6,6 +6,7 @@ module scroller(
 	input [3:0]DEC,
 	//input wr_en,
 	input  iRD,
+	input iCLEAN,
 	output [11:0]DECO
 );
 
@@ -37,7 +38,7 @@ always@(posedge iDIV_clk or negedge rst) begin //counter control
 	if(!rst) begin
 		scroller_counter <= 3'd0;
 	end
-	else if(scroller_counter == 3'd6)begin
+	else if(scroller_counter == 3'd6 || iCLEAN == 1'b1)begin
 		scroller_counter <= 0;
 	end
 	else if(start) scroller_counter <= scroller_counter + 1 ;
@@ -59,6 +60,11 @@ always@(posedge clk or negedge rst)begin //reg read data from ASCII2DEC
 				start <= 1;
 				end
 		endcase	
+	end
+	else if(iCLEAN)begin
+		seg1 <= initial_seg1;
+		seg2 <= initial_seg2;
+		seg3 <= initial_seg3;
 	end
 	else begin
 		seg1 <= seg1;

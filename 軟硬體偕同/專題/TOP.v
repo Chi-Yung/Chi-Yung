@@ -30,6 +30,7 @@ wire wTX_BAUD_clk;
 wire wtX_FIFO_en;
 wire wTX_RATE_STATE;
 wire [7:0]wTX_DATA;
+wire wCLEAN;
 
 MODE_CONTROL U0(
 .clk(clk),
@@ -39,7 +40,8 @@ MODE_CONTROL U0(
 .orate_control(wRate),
 .oData(wData),
 .oWRen(woWRen),
-.oTX_RATE_STATE(wTX_RATE_STATE)
+.oTX_RATE_STATE(wTX_RATE_STATE),
+.oCLEAN(wCLEAN)
 );
 uart_rx U1(
 .clk(clk),
@@ -75,6 +77,7 @@ scroller U5(
 .clk(clk),
 .iDIV_clk(wClk1s),
 .rst(reset),
+.iCLEAN(wCLEAN),
 //.i_start(), //enable
 .DEC(wDEC),
 .iRD(wren),
