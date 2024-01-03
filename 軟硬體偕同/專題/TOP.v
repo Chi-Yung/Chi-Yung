@@ -31,6 +31,7 @@ wire wtX_FIFO_en;
 wire wTX_RATE_STATE;
 wire [7:0]wTX_DATA;
 wire wCLEAN;
+wire wFINISH;
 
 MODE_CONTROL U0(
 .clk(clk),
@@ -41,7 +42,8 @@ MODE_CONTROL U0(
 .oData(wData),
 .oWRen(woWRen),
 .oTX_RATE_STATE(wTX_RATE_STATE),
-.oCLEAN(wCLEAN)
+.oCLEAN(wCLEAN),
+.oFINISH(wFINISH)
 );
 uart_rx U1(
 .clk(clk),
@@ -113,6 +115,7 @@ UART_TX U10(
 .reset(reset),
 .iTX_BAUD_clk(wTX_BAUD_clk),
 .iTX_FIFO_DATA(wTX_DATA),
+.iFINISH(wFINISH),
 .oTX_DATA(oTXDATA)
 );
 TX_DATA_MEM U11(
@@ -120,6 +123,7 @@ TX_DATA_MEM U11(
 .reset(reset),
 .iTX_RATE_STATE(wtX_FIFO_en),
 .iRATE(wRate),
-.oTX_DATA_MEM(wTX_DATA)
+.oTX_DATA_MEM(wTX_DATA),
+.iFINISH(wFINISH)
 );
 endmodule

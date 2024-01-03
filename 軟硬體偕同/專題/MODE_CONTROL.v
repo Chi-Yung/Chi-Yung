@@ -1,4 +1,4 @@
-module MODE_CONTROL(clk,reset,idata,oSTART,orate_control,oData,oWRen,oTX_RATE_STATE,oCLEAN);
+module MODE_CONTROL(clk,reset,idata,oSTART,orate_control,oData,oWRen,oTX_RATE_STATE,oCLEAN,oFINISH);
 input clk,reset;
 input [7:0] idata;
 output [7:0] oData;
@@ -7,11 +7,13 @@ output [1:0]orate_control;
 output oWRen;
 output oTX_RATE_STATE;
 output oCLEAN;
+output oFINISH;
 
 parameter IDLE = 3'd0;
 parameter START_CONTROL = 3'd1;
 parameter CLEAN = 3'd2;
 parameter NORMAL = 3'd3;
+parameter FINISH_CONTROL = 3'd4;
 
 reg [2:0] current_state,next_state;
 reg [1:0] rate_control;
@@ -20,11 +22,13 @@ reg [7:0] Data;
 reg roWRen;
 reg rTX_RATE_STATE;
 reg rCLEAN;
+reg rFINISH;
 assign oWRen = roWRen;
 assign orate_control = rate_control;
 assign oData = Data;
 assign oTX_RATE_STATE = rTX_RATE_STATE;
 assign oCLEAN = rCLEAN;
+assign oFINISH = rFINISH;
 always @ (posedge clk or negedge reset)begin
     if(!reset)
         current_state <= IDLE;
@@ -45,7 +49,7 @@ always @ (*)begin
 					end
             end
             START_CONTROL : begin
-					if(idata == 8'b01000110 || idata == 8'b01100110)next_state = IDLE;//f or F					
+					if(idata == 8'b01000110 || idata == 8'b01100110)next_state = FINISH_CONTROL;//f or F					
 					else begin
 					next_state = START_CONTROL;
 					end
@@ -58,6 +62,9 @@ always @ (*)begin
 					else begin
 					next_state = IDLE;
 					end
+				end
+				FINISH_CONTROL:begin
+					next_state = IDLE;
 				end
 				default : next_state = IDLE;
         endcase
@@ -89,11 +96,13 @@ always@(*)begin
 		rate_control <= 2'd0;
 		rTX_RATE_STATE <= 1'b0;
 		rCLEAN <= 1'b0;
+		rFINISH <= 1'b0;
 	end
-	else if(next_state == START_CONTROL)begin
+	else if(next_state == START_CONTROL)begin // START_CONTROL
 		oSTART <= 1'b0;
 		rTX_RATE_STATE <= 1'b1;
 		rCLEAN <= 1'b0;
+		rFINISH <= 1'b0;
 		case(idata)
 			8'b00110001:rate_control <= 2'b00; //1
 			8'b00110101:rate_control <= 2'b01; //5
@@ -101,15 +110,24 @@ always@(*)begin
 		default: rate_control <= rate_control;
 		endcase
 	end
-	else if(next_state == CLEAN)begin 
+	else if(next_state == CLEAN)begin // CLEAN
+		rTX_RATE_STATE <= 1'b0;
 		rCLEAN <= 1'b1;
 		rate_control <= 2'b00;
+		rFINISH <= 1'b0;
+	end
+	else if(next_state == FINISH_CONTROL)begin // FINISH_CONTROL
+		rTX_RATE_STATE <= 1'b0;
+		rCLEAN <= 1'b0;
+		rate_control <= rate_control;
+		rFINISH <= 1'b1;
 	end
 	else begin 
 		rate_control <= rate_control;
 		oSTART <= 1'b1;
 		rTX_RATE_STATE <= 1'b0;
 		rCLEAN <= 1'b0;
+		rFINISH <= 1'b0;
 	end
 end
 endmodule

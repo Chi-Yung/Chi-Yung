@@ -3,12 +3,14 @@ clk,
 reset,
 iTX_BAUD_clk,
 iTX_FIFO_DATA,
+iFINISH,
 oTX_DATA
 );
 input clk;
 input reset;
 input iTX_BAUD_clk;
 input [7:0] iTX_FIFO_DATA;
+input iFINISH;
 output oTX_DATA;
 
 reg[3:0] rSTATE;
@@ -16,11 +18,13 @@ reg rTX_DATA;
 
 assign oTX_DATA = rTX_DATA;
 
-always@(posedge iTX_BAUD_clk or negedge reset)begin
+always@(posedge iFINISH or posedge iTX_BAUD_clk or negedge reset)begin
 	if(!reset)begin
 		rSTATE <= 4'd0;
 		rTX_DATA <= 1'd1;
-	end else if(iTX_BAUD_clk)begin
+	end 
+	else if(iFINISH)rSTATE <= 4'd0;
+	else if(iTX_BAUD_clk)begin
 		case(rSTATE)
 			4'd0:
 			begin
@@ -72,7 +76,10 @@ always@(posedge iTX_BAUD_clk or negedge reset)begin
 				rTX_DATA <= 1'd1;
 				rSTATE <= 4'd0;
 			end
-			default :rSTATE <= 4'd0;
+			default :begin 
+				rSTATE <= 4'd0;
+				rTX_DATA <= 1'd1;
+			end
 			endcase 
 	end else begin
 		rTX_DATA <= 1'd1;

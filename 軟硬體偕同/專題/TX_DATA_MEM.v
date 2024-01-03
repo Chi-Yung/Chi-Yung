@@ -3,12 +3,14 @@ clk,
 reset,
 iTX_RATE_STATE,
 iRATE,
-oTX_DATA_MEM
+oTX_DATA_MEM,
+iFINISH
 );
 input clk;
 input reset;
 input iTX_RATE_STATE;
 input iRATE;
+input iFINISH;
 output [7:0]oTX_DATA_MEM;
 
 reg [7:0] rTX_DATA;
@@ -18,12 +20,17 @@ reg [7:0] rTX_DATA_MEM_RATE;
 reg [5:0] rmem_counter;
 assign oTX_DATA_MEM = rTX_DATA;
 
-always@(posedge iTX_RATE_STATE or negedge reset)begin
+always@(posedge iFINISH or posedge iTX_RATE_STATE or negedge reset)begin
 	if(!reset)begin
 		rmem_counter <= 6'd0;
+		rTX_DATA <= 8'b11111111;
+	end
+	else if(iFINISH)begin
+		rmem_counter <= 6'd0;
+		rTX_DATA <= 8'b11111111;
 	end
 	else if(iTX_RATE_STATE)begin
-		if(rmem_counter == 6'd33)rmem_counter <= 6'd0;
+		if(rmem_counter == 6'd34)rmem_counter <= 6'd0;
 		else begin
 			case (rmem_counter)
 				6'd0: rTX_DATA <= rTX_DATA_MEM_ENGLISH[2]; 		// c
@@ -61,12 +68,13 @@ always@(posedge iTX_RATE_STATE or negedge reset)begin
 				6'd31: rTX_DATA <= rTX_DATA_MEM_ENGLISH[4];		// e
 				6'd32: rTX_DATA <= 8'b0011_1010;						// :
 				6'd33: rTX_DATA <= rTX_DATA_MEM_RATE;				// HZ
-			default: rTX_DATA <= 8'b0000_0000; // 如果没有匹配，设置为默认值
+				6'd34: rTX_DATA <= 8'b00001010; //換行
+			default: rTX_DATA <= 8'b11111111; // 如果没有匹配，设置为默认值
 			endcase
 			rmem_counter <= rmem_counter +6'd1;
 		end	
 	end
-	else rTX_DATA <= rTX_DATA;
+	else rTX_DATA <= 8'b11111111;
 end
 always@(posedge clk or negedge reset)begin
 	if(!reset)begin

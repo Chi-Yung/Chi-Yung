@@ -24,7 +24,7 @@ end
 always@(posedge clk or negedge reset)begin
 	if(!reset)bit_counter <= 4'd0;
 	else if(BAUD_COUNTER == BAUD_MAX)begin
-		if(bit_counter == bitwidth)bit_counter <= 4'd0;
+		if(bit_counter == (bitwidth - 4'd1))bit_counter <= 4'd0;
 		else bit_counter <= bit_counter + 1'd1;
 	end else bit_counter <= bit_counter;		
 end
