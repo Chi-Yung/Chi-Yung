@@ -9,7 +9,7 @@ iFINISH
 input clk;
 input reset;
 input iTX_RATE_STATE;
-input iRATE;
+input [1:0]iRATE;
 input iFINISH;
 output [7:0]oTX_DATA_MEM;
 
@@ -30,7 +30,7 @@ always@(posedge iFINISH or posedge iTX_RATE_STATE or negedge reset)begin
 		rTX_DATA <= 8'b11111111;
 	end
 	else if(iTX_RATE_STATE)begin
-		if(rmem_counter == 6'd34)rmem_counter <= 6'd0;
+		if(rmem_counter == 6'd35)rmem_counter <= 6'd0;
 		else begin
 			case (rmem_counter)
 				6'd0: rTX_DATA <= rTX_DATA_MEM_ENGLISH[2]; 		// c
@@ -119,7 +119,7 @@ always@(posedge clk or negedge reset)begin
 end
 //rate
 always@(posedge clk or negedge reset)begin
-	if(!reset) rTX_DATA_MEM_RATE <= rTX_DATA_MEM_NUMBER[0];
+	if(!reset) rTX_DATA_MEM_RATE <= rTX_DATA_MEM_NUMBER[1];
 	else begin
 		case(iRATE)
 			2'b00:rTX_DATA_MEM_RATE 	<= 	rTX_DATA_MEM_NUMBER[1];//1

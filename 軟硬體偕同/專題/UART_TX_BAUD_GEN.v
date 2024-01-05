@@ -10,8 +10,8 @@ input reset;
 input iTX_en;
 output oTX_BAUD_clk;
 output otX_FIFO_en;
-parameter BAUD_MAX  = 10416;
-parameter bitwidth  = 10;
+parameter BAUD_MAX  = 10414;
+parameter bitwidth  = 9;
 reg [13:0] BAUD_COUNTER;
 reg [3:0] bit_counter;
 always@(posedge clk or negedge reset)begin
@@ -24,7 +24,7 @@ end
 always@(posedge clk or negedge reset)begin
 	if(!reset)bit_counter <= 4'd0;
 	else if(BAUD_COUNTER == BAUD_MAX)begin
-		if(bit_counter == (bitwidth - 4'd1))bit_counter <= 4'd0;
+		if(bit_counter == bitwidth)bit_counter <= 4'd0;
 		else bit_counter <= bit_counter + 1'd1;
 	end else bit_counter <= bit_counter;		
 end

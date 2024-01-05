@@ -93,7 +93,7 @@ end
 always@(*)begin
 	if(!reset)begin
 		oSTART <= 1'b0;
-		rate_control <= 2'd0;
+		rate_control <= 2'b00;
 		rTX_RATE_STATE <= 1'b0;
 		rCLEAN <= 1'b0;
 		rFINISH <= 1'b0;
