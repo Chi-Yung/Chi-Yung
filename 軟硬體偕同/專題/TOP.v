@@ -37,7 +37,6 @@ MODE_CONTROL U0(
 .clk(clk),
 .reset(reset),
 .idata(oRXDATA),
-.oSTART(wSTART),
 .orate_control(wRate),
 .oData(wData),
 .oWRen(woWRen),
@@ -83,7 +82,8 @@ scroller U5(
 //.i_start(), //enable
 .DEC(wDEC),
 .iRD(wren),
-.DECO({wDECo3,wDECo2,wDECo1})
+.DECO({wDECo3,wDECo2,wDECo1}),
+.oSTART(wSTART)
 );
 DEC2SEG U6(
 .clk(clk),
@@ -107,6 +107,7 @@ UART_TX_BAUD_GEN U9(
 .clk(clk),
 .reset(reset),
 .iTX_en(wTX_RATE_STATE),
+.iSTART(wSTART),
 .oTX_BAUD_clk(wTX_BAUD_clk),
 .otX_FIFO_en(wtX_FIFO_en)
 );

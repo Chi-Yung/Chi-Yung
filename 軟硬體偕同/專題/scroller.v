@@ -7,7 +7,8 @@ module scroller(
 	//input wr_en,
 	input  iRD,
 	input iCLEAN,
-	output [11:0]DECO
+	output [11:0]DECO,
+	output oSTART
 );
 
 reg [3:0] seg1,seg2,seg3;
@@ -19,6 +20,7 @@ reg [11:0] rDECO;
 parameter blk = 4'b1111;
 
 assign DECO = rDECO;
+assign oSTART = start;
 
 always@(posedge clk or negedge rst) begin
 	if(!rst) wr_en <= 0;

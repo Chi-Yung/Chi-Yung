@@ -10,8 +10,8 @@ input        [1:0] iRate_control;
 output             oClk1s;
 
 parameter   CLOCKFREQ = 100_000_000; /* clock = 100Mhz*/
-parameter   ExpectClk1 = 10000;  /* 1Hz *//////////////////////////////////////////////////////////////
-parameter   ExpectClk5 = 5000;  /* 5Hz *///////////////////////////////////////////////////////////////
+parameter   ExpectClk1 = 1;  /* 1Hz *//////////////////////////////////////////////////////////////
+parameter   ExpectClk5 = 5;  /* 5Hz *///////////////////////////////////////////////////////////////
 parameter   ExpectClk10 = 10;  /* 10Hz */
 reg              rClkHz ;
 reg    [31:0]    rDivCounter;
@@ -41,7 +41,7 @@ always@(posedge iClk or negedge iRSt_n) begin
             rClkHz <= rClkHz ;
         end
     end 
-	 2'b10:begin
+	 2'b11:begin
         if(rDivCounter >= ((CLOCKFREQ/(ExpectClk10 * 2))-1)) begin
             rDivCounter<= 0;
             rClkHz <= ~rClkHz ;

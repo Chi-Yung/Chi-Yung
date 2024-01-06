@@ -1,8 +1,7 @@
-module MODE_CONTROL(clk,reset,idata,oSTART,orate_control,oData,oWRen,oTX_RATE_STATE,oCLEAN,oFINISH);
+module MODE_CONTROL(clk,reset,idata,orate_control,oData,oWRen,oTX_RATE_STATE,oCLEAN,oFINISH);
 input clk,reset;
 input [7:0] idata;
 output [7:0] oData;
-output reg oSTART;
 output [1:0]orate_control;
 output oWRen;
 output oTX_RATE_STATE;
@@ -92,21 +91,19 @@ always@(*)begin
 end
 always@(*)begin
 	if(!reset)begin
-		oSTART <= 1'b0;
 		rate_control <= 2'b00;
 		rTX_RATE_STATE <= 1'b0;
 		rCLEAN <= 1'b0;
 		rFINISH <= 1'b0;
 	end
 	else if(next_state == START_CONTROL)begin // START_CONTROL
-		oSTART <= 1'b0;
 		rTX_RATE_STATE <= 1'b1;
 		rCLEAN <= 1'b0;
 		rFINISH <= 1'b0;
 		case(idata)
 			8'b00110001:rate_control <= 2'b00; //1
 			8'b00110101:rate_control <= 2'b01; //5
-			8'b01000001:rate_control <= 2'b10; //A
+			8'b01000001:rate_control <= 2'b11; //A
 		default: rate_control <= rate_control;
 		endcase
 	end
@@ -124,7 +121,6 @@ always@(*)begin
 	end
 	else begin 
 		rate_control <= rate_control;
-		oSTART <= 1'b1;
 		rTX_RATE_STATE <= 1'b0;
 		rCLEAN <= 1'b0;
 		rFINISH <= 1'b0;

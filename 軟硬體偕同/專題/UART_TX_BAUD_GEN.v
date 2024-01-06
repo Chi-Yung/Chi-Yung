@@ -2,12 +2,14 @@ module UART_TX_BAUD_GEN(
 clk,
 reset,
 iTX_en,
+iSTART,
 oTX_BAUD_clk,
 otX_FIFO_en
 );
 input clk;
 input reset;
 input iTX_en;
+input iSTART;
 output oTX_BAUD_clk;
 output otX_FIFO_en;
 parameter BAUD_MAX  = 10414;

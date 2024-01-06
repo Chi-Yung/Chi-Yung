@@ -20,6 +20,61 @@ reg [7:0] rTX_DATA_MEM_RATE;
 reg [5:0] rmem_counter;
 assign oTX_DATA_MEM = rTX_DATA;
 
+//rate
+always@(posedge clk or negedge reset)begin
+	if(!reset) rTX_DATA_MEM_RATE <= rTX_DATA_MEM_NUMBER[1];
+	else begin
+		case(iRATE)
+			2'b00:rTX_DATA_MEM_RATE 	<= 	rTX_DATA_MEM_NUMBER[1];//1
+			2'b01:rTX_DATA_MEM_RATE 	<= 	rTX_DATA_MEM_NUMBER[5];//5
+			2'b11:rTX_DATA_MEM_RATE 	<= 	rTX_DATA_MEM_ENGLISH[0];//a
+		default:rTX_DATA_MEM_RATE <= rTX_DATA_MEM_RATE;
+		endcase
+	end
+end
+
+always@(negedge reset)begin
+	if(!reset)begin
+		rTX_DATA_MEM_ENGLISH[0] 	<= 	8'b01100001;//a
+		rTX_DATA_MEM_ENGLISH[1] 	<= 	8'b01100010;//b
+		rTX_DATA_MEM_ENGLISH[2] 	<= 	8'b01100011;//c
+		rTX_DATA_MEM_ENGLISH[3] 	<= 	8'b01100100;//d
+		rTX_DATA_MEM_ENGLISH[4] 	<= 	8'b01100101;//e
+		rTX_DATA_MEM_ENGLISH[5] 	<= 	8'b01100110;//f
+		rTX_DATA_MEM_ENGLISH[6] 	<= 	8'b01100111;//g
+		rTX_DATA_MEM_ENGLISH[7] 	<= 	8'b01101000;//h
+		rTX_DATA_MEM_ENGLISH[8] 	<= 	8'b01101001;//i
+		rTX_DATA_MEM_ENGLISH[9] 	<= 	8'b01101010;//j
+		rTX_DATA_MEM_ENGLISH[10] 	<= 	8'b01101011;//k
+		rTX_DATA_MEM_ENGLISH[11] 	<= 	8'b01101100;//l
+		rTX_DATA_MEM_ENGLISH[12] 	<= 	8'b01101101;//m
+		rTX_DATA_MEM_ENGLISH[13] 	<= 	8'b01101110;//n
+		rTX_DATA_MEM_ENGLISH[14] 	<= 	8'b01101111;//o
+		rTX_DATA_MEM_ENGLISH[15] 	<= 	8'b01110000;//p
+		rTX_DATA_MEM_ENGLISH[16] 	<= 	8'b01110001;//q
+		rTX_DATA_MEM_ENGLISH[17] 	<= 	8'b01110010;//r
+		rTX_DATA_MEM_ENGLISH[18] 	<= 	8'b01110011;//s
+		rTX_DATA_MEM_ENGLISH[19] 	<= 	8'b01110100;//t
+		rTX_DATA_MEM_ENGLISH[20] 	<= 	8'b01110101;//u
+		rTX_DATA_MEM_ENGLISH[21] 	<= 	8'b01110110;//v
+		rTX_DATA_MEM_ENGLISH[22] 	<= 	8'b01110111;//w
+		rTX_DATA_MEM_ENGLISH[23] 	<= 	8'b01111000;//x
+		rTX_DATA_MEM_ENGLISH[24] 	<= 	8'b01111001;//y
+		rTX_DATA_MEM_ENGLISH[25] 	<= 	8'b01111010;//z
+		/***************************************************/
+		rTX_DATA_MEM_NUMBER[0] 	<= 	8'b00110000;//0
+		rTX_DATA_MEM_NUMBER[1]	<= 	8'b00110001;//1
+		rTX_DATA_MEM_NUMBER[2]	<= 	8'b00110010;//2
+		rTX_DATA_MEM_NUMBER[3]	<= 	8'b00110011;//3
+		rTX_DATA_MEM_NUMBER[4]	<= 	8'b00110100;//4
+		rTX_DATA_MEM_NUMBER[5]	<= 	8'b00110101;//5
+		rTX_DATA_MEM_NUMBER[6]	<= 	8'b00110110;//6
+		rTX_DATA_MEM_NUMBER[7]	<= 	8'b00110111;//7
+		rTX_DATA_MEM_NUMBER[8]	<= 	8'b00111000;//8
+		rTX_DATA_MEM_NUMBER[9]	<= 	8'b00111001;//9
+	end
+end
+
 always@(posedge iFINISH or posedge iTX_RATE_STATE or negedge reset)begin
 	if(!reset)begin
 		rmem_counter <= 6'd0;
@@ -75,59 +130,6 @@ always@(posedge iFINISH or posedge iTX_RATE_STATE or negedge reset)begin
 		end	
 	end
 	else rTX_DATA <= 8'b11111111;
-end
-always@(posedge clk or negedge reset)begin
-	if(!reset)begin
-		rTX_DATA_MEM_ENGLISH[0] 	<= 	8'b01100001;//a
-		rTX_DATA_MEM_ENGLISH[1] 	<= 	8'b01100010;//b
-		rTX_DATA_MEM_ENGLISH[2] 	<= 	8'b01100011;//c
-		rTX_DATA_MEM_ENGLISH[3] 	<= 	8'b01100100;//d
-		rTX_DATA_MEM_ENGLISH[4] 	<= 	8'b01100101;//e
-		rTX_DATA_MEM_ENGLISH[5] 	<= 	8'b01100110;//f
-		rTX_DATA_MEM_ENGLISH[6] 	<= 	8'b01100111;//g
-		rTX_DATA_MEM_ENGLISH[7] 	<= 	8'b01101000;//h
-		rTX_DATA_MEM_ENGLISH[8] 	<= 	8'b01101001;//i
-		rTX_DATA_MEM_ENGLISH[9] 	<= 	8'b01101010;//j
-		rTX_DATA_MEM_ENGLISH[10] 	<= 	8'b01101011;//k
-		rTX_DATA_MEM_ENGLISH[11] 	<= 	8'b01101100;//l
-		rTX_DATA_MEM_ENGLISH[12] 	<= 	8'b01101101;//m
-		rTX_DATA_MEM_ENGLISH[13] 	<= 	8'b01101110;//n
-		rTX_DATA_MEM_ENGLISH[14] 	<= 	8'b01101111;//o
-		rTX_DATA_MEM_ENGLISH[15] 	<= 	8'b01110000;//p
-		rTX_DATA_MEM_ENGLISH[16] 	<= 	8'b01110001;//q
-		rTX_DATA_MEM_ENGLISH[17] 	<= 	8'b01110010;//r
-		rTX_DATA_MEM_ENGLISH[18] 	<= 	8'b01110011;//s
-		rTX_DATA_MEM_ENGLISH[19] 	<= 	8'b01110100;//t
-		rTX_DATA_MEM_ENGLISH[20] 	<= 	8'b01110101;//u
-		rTX_DATA_MEM_ENGLISH[21] 	<= 	8'b01110110;//v
-		rTX_DATA_MEM_ENGLISH[22] 	<= 	8'b01110111;//w
-		rTX_DATA_MEM_ENGLISH[23] 	<= 	8'b01111000;//x
-		rTX_DATA_MEM_ENGLISH[24] 	<= 	8'b01111001;//y
-		rTX_DATA_MEM_ENGLISH[25] 	<= 	8'b01111010;//z
-		/***************************************************/
-		rTX_DATA_MEM_NUMBER[0] 	<= 	8'b00110000;//0
-		rTX_DATA_MEM_NUMBER[1]	<= 	8'b00110001;//1
-		rTX_DATA_MEM_NUMBER[2]	<= 	8'b00110010;//2
-		rTX_DATA_MEM_NUMBER[3]	<= 	8'b00110011;//3
-		rTX_DATA_MEM_NUMBER[4]	<= 	8'b00110100;//4
-		rTX_DATA_MEM_NUMBER[5]	<= 	8'b00110101;//5
-		rTX_DATA_MEM_NUMBER[6]	<= 	8'b00110110;//6
-		rTX_DATA_MEM_NUMBER[7]	<= 	8'b00110111;//7
-		rTX_DATA_MEM_NUMBER[8]	<= 	8'b00111000;//8
-		rTX_DATA_MEM_NUMBER[9]	<= 	8'b00111001;//9
-	end
-end
-//rate
-always@(posedge clk or negedge reset)begin
-	if(!reset) rTX_DATA_MEM_RATE <= rTX_DATA_MEM_NUMBER[1];
-	else begin
-		case(iRATE)
-			2'b00:rTX_DATA_MEM_RATE 	<= 	rTX_DATA_MEM_NUMBER[1];//1
-			2'b01:rTX_DATA_MEM_RATE 	<= 	rTX_DATA_MEM_NUMBER[5];//5
-			2'b10:rTX_DATA_MEM_RATE 	<= 	rTX_DATA_MEM_ENGLISH[0];//a
-		default:rTX_DATA_MEM_RATE <= rTX_DATA_MEM_RATE;
-		endcase
-	end
 end
 
 
