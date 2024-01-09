@@ -181,7 +181,7 @@ always@(posedge iFINISH or posedge iTX_RATE_STATE or negedge reset)begin
 			INI_mem_counter <= INI_mem_counter +6'd1;
 		end	
 	end
-	else if(iTX_NORMAL)begin
+	else if(iTX_NORMAL && !iFINISH)begin
 		INI_mem_counter <= 0;
 		STARR_mem_counter <= 0;
 		if(NOR_mem_counter == 6'd35)NOR_mem_counter <= 0;
