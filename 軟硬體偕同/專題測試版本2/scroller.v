@@ -49,6 +49,9 @@ end
 always@(posedge clk or negedge rst)begin //reg read data from ASCII2DEC
 	if(!rst) begin
 		start <= 0;
+		seg1 <= 4'bx;
+		seg2 <= 4'bx;
+		seg3 <= 4'bx;
 		initial_seg1 <= 4'b0001;
 		initial_seg2 <= 4'b0010;
 		initial_seg3 <= 4'b0011;
