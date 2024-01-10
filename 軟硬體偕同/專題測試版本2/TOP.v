@@ -2,16 +2,16 @@ module TOP(
 		clk, 
 		reset, 
 		RX, 
-		seg1,
+		/*seg1,
 		seg2,
-		seg3,
+		seg3,*/
 		oTXDATA
 	);
 input clk;
 input reset;
 input RX;
 
-output [6:0] seg1,seg2,seg3;
+//output [6:0] seg1,seg2,seg3;
 output oTXDATA;
 
 wire [1:0]wRate;
