@@ -90,7 +90,7 @@ always@(posedge iFINISH or posedge iTX_RATE_STATE or negedge reset)begin
 		INI_mem_counter <= 0;
 		NOR_mem_counter <= 0;
 		STARR_mem_counter <= 0;
-		rTX_DATA <= 8'b11111111;
+		rTX_DATA <= rTX_DATA;
 	end
 	else if(iTX_START_CONTROL)begin
 		INI_mem_counter <= 0;
