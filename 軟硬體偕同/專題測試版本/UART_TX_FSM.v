@@ -75,7 +75,7 @@ always@(*)begin
 		case(idata)
 			8'b00110001:rTX_rate <= 8'b00110001; //1
 			8'b00110101:rTX_rate <= 8'b00110101; //5
-			8'b01000001:rTX_rate <= 8'b01100001; //A
+			8'b01000001:rTX_rate <= 8'b01000001; //A
 		default: rTX_rate <= rTX_rate;
 		endcase
 	end

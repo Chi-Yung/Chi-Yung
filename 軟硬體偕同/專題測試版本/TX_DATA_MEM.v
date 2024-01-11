@@ -23,7 +23,6 @@ reg [7:0] rTX_DATA;
 reg [7:0] rTX_DATA_MEM_ENGLISH[25:0];
 reg [7:0] rTX_DATA_MEM_NUMBER[9:0];
 reg [7:0] rTX_DATA_MEM_RATE;
-reg [7:0] rRATE;
 
 reg [5:0] INI_mem_counter;
 reg [5:0] NOR_mem_counter;
@@ -31,11 +30,6 @@ reg [5:0] STARR_mem_counter;
 
 assign oTX_DATA_MEM = rTX_DATA;
 
-always@(posedge iFINISH or posedge clk or negedge reset)begin
-	if(!reset)rRATE <= 8'b00110001;
-	else if(iFINISH)rRATE <= rRATE;
-	else rRATE <= iRATE;
-end
 
 always@(negedge reset)begin
 	if(!reset)begin
@@ -132,7 +126,7 @@ always@(posedge iFINISH or posedge iTX_RATE_STATE or negedge reset)begin
 				6'd30: rTX_DATA <= rTX_DATA_MEM_ENGLISH[19];		// t
 				6'd31: rTX_DATA <= rTX_DATA_MEM_ENGLISH[4];		// e
 				6'd32: rTX_DATA <= 8'b0011_1010;						// :
-				6'd33: rTX_DATA <= rRATE;				// HZ
+				6'd33: rTX_DATA <= iRATE;				// HZ
 				6'd34: rTX_DATA <= 8'b00001010; //換行
 			default: rTX_DATA <= 8'b11111111; // 如果没有匹配，设置为默认值
 			endcase
@@ -179,7 +173,7 @@ always@(posedge iFINISH or posedge iTX_RATE_STATE or negedge reset)begin
 				6'd30: rTX_DATA <= rTX_DATA_MEM_ENGLISH[19];		// t
 				6'd31: rTX_DATA <= rTX_DATA_MEM_ENGLISH[4];		// e
 				6'd32: rTX_DATA <= 8'b0011_1010;						// :
-				6'd33: rTX_DATA <= rRATE;				// HZ
+				6'd33: rTX_DATA <= iRATE;				// HZ
 				6'd34: rTX_DATA <= 8'b00001010; //換行
 			default: rTX_DATA <= 8'b11111111; //
 			endcase
@@ -226,7 +220,7 @@ always@(posedge iFINISH or posedge iTX_RATE_STATE or negedge reset)begin
 				6'd30: rTX_DATA <= rTX_DATA_MEM_ENGLISH[19];		// t
 				6'd31: rTX_DATA <= rTX_DATA_MEM_ENGLISH[4];		// e
 				6'd32: rTX_DATA <= 8'b0011_1010;						// :
-				6'd33: rTX_DATA <= rRATE;				// HZ
+				6'd33: rTX_DATA <= iRATE;				// HZ
 				6'd34: rTX_DATA <= 8'b00001010; //換行
 			default: rTX_DATA <= 8'b11111111; // 如果没有匹配，设置为默认值
 			endcase
