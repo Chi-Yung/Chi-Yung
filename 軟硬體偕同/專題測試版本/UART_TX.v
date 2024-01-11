@@ -24,8 +24,11 @@ always@(posedge iFINISH or posedge iTX_BAUD_clk or negedge reset)begin
 		rTX_DATA <= 1'd1;
 	end 
 	else if(iFINISH)begin
+		if(rSTATE == 4'd9)begin
 		rSTATE <= 4'd0;
 		rTX_DATA <= 1'd1;
+		end
+		else rSTATE <= rSTATE;
 	end
 	else if(iTX_BAUD_clk)begin
 		case(rSTATE)
