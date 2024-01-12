@@ -67,6 +67,7 @@ always@(posedge clk or negedge rst)begin //reg read data from ASCII2DEC
 		seg1 <= initial_seg1;
 		seg2 <= initial_seg2;
 		seg3 <= initial_seg3;
+		start <= 0;
 	end
 	else begin
 		seg1 <= seg1;
