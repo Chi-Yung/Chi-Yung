@@ -47,6 +47,7 @@ always @ (*)begin
             end
 				NORMAL:begin
 					if(idata == 8'b01001101 || idata == 8'b01101101)next_state = START_CONTROL;//m or M
+					else if(idata == 8'b01000011 || idata == 8'b01100011)next_state = IDLE;
 					else begin
 					next_state = NORMAL;
 					end
