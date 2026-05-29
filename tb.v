@@ -1,11 +1,13 @@
 `timescale 1ns / 1ps
 //=============================================================================
 // Testbench for usb_pd module
-// - clk_apb  : 24 MHz (period = 41.667 ns)
-// - BMC rate : 300 Kbps -> 1 bit = 80 clk cycles @ 24 MHz
-//   BMC encoding rule (USB PD):
-//     '1' : toggle only at the MID point of the bit period
-//     '0' : toggle at the START of the bit period AND at the MID point
+// - clk_apb  : 24 MHz
+// - clk_bmca : external BMC clock (600 kHz, half-period = BMC bit period)
+//   BMC encoding follows bmca_send_packet style:
+//     Each bit period = 1 clk_bmca cycle
+//     Every bit  : toggle cca_out at posedge clk_bmca (mandatory mid-point)
+//     Bit '1'    : additional toggle at next posedge clk_bmca
+//     Bit '0'    : no additional toggle
 // - Input: "bmc_input.txt" - 190 chars of '0'/'1' (4b5b encoded bitstream)
 //=============================================================================
 
@@ -14,12 +16,11 @@ module tb_usb_pd;
     //=========================================================================
     // Parameters
     //=========================================================================
-    localparam real    CLK_PERIOD_NS = 41.667; // 24 MHz
-    localparam integer BMC_BIT_CLKS  = 80;     // 1/300K / (1/24M) = 80 cycles
-    localparam integer BMC_HALF_CLKS = 40;
-    localparam integer PULSE_8U_CNT  = 192;    // 8 us  @ 24 MHz
-    localparam integer PULSE_2M_CNT  = 49152;  // 2.048 ms @ 24 MHz
-    localparam integer BITSTREAM_LEN = 190;
+    localparam real    CLK_APB_PERIOD_NS  = 41.667; // 24 MHz
+    localparam real    CLK_BMCA_PERIOD_NS = 1666.667; // 600 kHz (300Kbps BMC)
+    localparam integer PULSE_8U_CNT       = 192;    // 8 us  @ 24 MHz
+    localparam integer PULSE_2M_CNT       = 49152;  // 2.048 ms @ 24 MHz
+    localparam integer BITSTREAM_LEN      = 190;
 
     //=========================================================================
     // DUT Ports
@@ -38,7 +39,7 @@ module tb_usb_pd;
     // BMC
     wire        bmc_txen_o;
     wire        bmc_out_o;
-    reg         bmc_in_i;
+    reg         bmc_in_i;           // driven by inject task via cca_out_o -> bmc_in_i
 
     // Interrupt & setting
     wire        usb_pd_int_o;
@@ -69,6 +70,13 @@ module tb_usb_pd;
     wire [7:0]  dbg_usb_pd_tx;
     wire [7:0]  dbg_usb_pd_rx;
 `endif
+
+    //=========================================================================
+    // BMC clock  (600 kHz)
+    //=========================================================================
+    reg clk_bmca;
+    initial clk_bmca = 0;
+    always #(CLK_BMCA_PERIOD_NS / 2.0) clk_bmca = ~clk_bmca;
 
     //=========================================================================
     // DUT Instantiation
@@ -105,10 +113,10 @@ module tb_usb_pd;
     );
 
     //=========================================================================
-    // Clock  24 MHz
+    // APB clock  24 MHz
     //=========================================================================
     initial clk_apb = 0;
-    always #(CLK_PERIOD_NS / 2.0) clk_apb = ~clk_apb;
+    always #(CLK_APB_PERIOD_NS / 2.0) clk_apb = ~clk_apb;
 
     //=========================================================================
     // Timing Pulses
@@ -155,85 +163,86 @@ module tb_usb_pd;
     endtask
 
     //=========================================================================
-    // BMC Encoding & Injection
+    // BMC Encoding  (mirrors bmca_send_packet logic from reference code)
     //
-    // USB PD BMC (Biphase Mark Coding):
-    //   Signal idles LOW before preamble.
-    //   Every bit has a mandatory transition at the MID point.
-    //   Bit '0' -> additional transition at the START of the bit period.
-    //   Bit '1' -> no start transition; only mid-point transition.
+    // Reference logic (per bit, MSB-first from code[len-1] downto code[0]):
     //
-    //   80 clk cycles per bit, 40 per half-period:
+    //   // mandatory toggle at posedge clk_bmca  (= half-bit transition)
+    //   cca_out_o = ~cca_out_o;
+    //   @(posedge clk_bmca) #0.1;
     //
-    //   Bit '1':  [0..39] hold, [40] toggle, [41..79] hold
-    //   Bit '0':  [0] toggle,   [1..39] hold, [40] toggle, [41..79] hold
+    //   // if bit == '1': one more toggle  (= full-bit transition for '1')
+    //   if (code[len-1-ia] == 1'b1)
+    //     cca_out_o = ~cca_out_o;
+    //   @(posedge clk_bmca) #0.1;
+    //
+    // Here we drive bmc_in_i instead of cca_out_o.
+    // Bitstream is stored LSB-first in bitstream[0..len-1],
+    // so we send bitstream[len-1] first (MSB of the original code).
     //=========================================================================
 
-    // Shared flag: set by inject_bmc_stream when done, read by DMA loop
     reg bmc_inject_done;
-
     reg [0:BITSTREAM_LEN-1] bitstream;
 
-    task send_bmc_bit;
-        input bit_in;
-        begin
-            if (bit_in == 1'b0) begin
-                // toggle at start
-                @(posedge clk_apb); #1;
-                bmc_in_i = ~bmc_in_i;
-                repeat(BMC_HALF_CLKS - 1) @(posedge clk_apb);
-            end else begin
-                // no start toggle, just wait first half
-                repeat(BMC_HALF_CLKS) @(posedge clk_apb);
-            end
-            // mid-point toggle (always)
-            #1; bmc_in_i = ~bmc_in_i;
-            // second half
-            repeat(BMC_HALF_CLKS) @(posedge clk_apb);
-        end
-    endtask
-
     task inject_bmc_stream;
-        integer fd, ret, bit_cnt, i;
+        integer fd, ret, bit_cnt, ia;
         begin
+            // ---- load file ----
             fd = $fopen("bmc_input.txt", "r");
             if (fd == 0) begin
                 $display("[ERROR] Cannot open bmc_input.txt");
                 $finish;
             end
-
             bit_cnt = 0;
             while (!$feof(fd) && bit_cnt < BITSTREAM_LEN) begin
                 ret = $fgetc(fd);
                 if      (ret == "1") begin bitstream[bit_cnt] = 1'b1; bit_cnt = bit_cnt + 1; end
                 else if (ret == "0") begin bitstream[bit_cnt] = 1'b0; bit_cnt = bit_cnt + 1; end
-                // skip '\n', '\r', spaces
             end
             $fclose(fd);
-
             $display("[%0t] Loaded %0d bits from bmc_input.txt", $time, bit_cnt);
             if (bit_cnt != BITSTREAM_LEN)
                 $display("[WARN] Expected %0d bits, got %0d", BITSTREAM_LEN, bit_cnt);
 
-            // pre-amble idle (4 bit periods)
+            // ---- pre-amble: idle low for 5 us then assert CC output enable ----
             bmc_in_i = 1'b0;
-            repeat(BMC_BIT_CLKS * 4) @(posedge clk_apb);
+            #5000;
+            // (cca_oen equivalent: nothing to drive here, just start sending)
+            @(posedge clk_bmca); #0.1;
 
             $display("[%0t] BMC TX start -> %0d bits @ 300 Kbps", $time, bit_cnt);
-            for (i = 0; i < bit_cnt; i = i + 1)
-                send_bmc_bit(bitstream[i]);
 
-            // post-amble idle (4 bit periods)
-            repeat(BMC_BIT_CLKS * 4) @(posedge clk_apb);
+            // ---- send bits MSB-first: bitstream[bit_cnt-1] .. bitstream[0] ----
+            for (ia = 0; ia < bit_cnt; ia = ia + 1) begin
+
+                // mandatory toggle at posedge clk_bmca
+                bmc_in_i = ~bmc_in_i;
+                @(posedge clk_bmca); #0.1;
+
+                // extra toggle for bit '1'
+                if (bitstream[bit_cnt - 1 - ia] == 1'b1) begin
+                    bmc_in_i = ~bmc_in_i;
+                end
+                @(posedge clk_bmca); #0.1;
+            end
+
+            // ---- end-of-packet: drive low, disable output ----
+            bmc_in_i = 1'b0;
+            @(posedge clk_bmca);
+            #1000;                  // 1 us hold (mirrors #1000 in reference)
+            bmc_in_i = 1'b1;        // mirrors cca_out_o = 1'b1 after disable
+
+`ifdef DEBUG_MSG
+            @(negedge clk_bmca);
+            $display("[%0t] BMC inject done, code = %b", $time, bitstream);
+`endif
             $display("[%0t] BMC TX done", $time);
-
-            // signal DMA loop to stop
             bmc_inject_done = 1;
         end
     endtask
 
     //=========================================================================
-    // RX DMA loop  (runs as always block, gated by bmc_inject_done flag)
+    // RX DMA auto-ack (always block, stops when bmc_inject_done = 1)
     //=========================================================================
     always @(posedge clk_apb) begin
         if (!bmc_inject_done && bmc_rx_dma_req_o) begin
@@ -245,7 +254,7 @@ module tb_usb_pd;
     end
 
     //=========================================================================
-    // TX DMA response task (called explicitly when needed)
+    // TX DMA response task
     //=========================================================================
     task bmc_tx_dma_respond;
         input [31:0] tx_data;
@@ -288,12 +297,11 @@ module tb_usb_pd;
         repeat(10) @(posedge clk_apb);
         $display("[%0t]   reg_usb_pd_en_o = %b", $time, reg_usb_pd_en_o);
 
-        // Test 3: Inject 4b5b bitstream via BMC on bmc_in_i
-        // RX DMA is handled automatically by the always block above
+        // Test 3: BMC RX injection
         $display("[%0t] === Test 3: BMC RX - inject bmc_input.txt ===", $time);
-        inject_bmc_stream;  // blocking; sets bmc_inject_done=1 when finished
+        inject_bmc_stream;
 
-        // Test 4: Check interrupt
+        // Test 4: Interrupt
         $display("[%0t] === Test 4: Interrupt ===", $time);
         repeat(20) @(posedge clk_apb);
         $display("[%0t]   usb_pd_int_o = %b", $time, usb_pd_int_o);
