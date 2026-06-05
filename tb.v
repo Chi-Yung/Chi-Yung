@@ -330,5 +330,38 @@ module tb_usb_pd;
         $display("[%0t] TIMEOUT", $time);
         $finish;
     end
+// DMA SRAM 宣告
+reg [31:0] tx_dma_buf_i [0:255];  // 依實際大小調整
+
+task dma_write;
+    input [15:0] ehdr;   // extended header
+    input [15:0] hdr;    // header
+    input [7:0]  data []; // data bytes
+    input [31:0] crc;    // CRC
+    
+    integer i, addr;
+    integer data_len;
+    begin
+        data_len = data.size();
+        
+        // Row n：ehdr + hdr
+        tx_dma_buf_i[0] = {ehdr[15:8], ehdr[7:0], hdr[15:8], hdr[7:0]};
+        
+        // Row n+4, n+8...：每次填 4 bytes
+        for (i = 0; i < data_len; i = i + 4) begin
+            addr = 1 + (i/4);  // word address
+            tx_dma_buf_i[addr] = {
+                data[i+3],   // [31:24]
+                data[i+2],   // [23:16]
+                data[i+1],   // [15:8]
+                data[i]      // [7:0]
+            };
+        end
+        
+        // Row m：CRC
+        addr = 1 + (data_len/4);
+        tx_dma_buf_i[addr] = {crc[31:24], crc[23:16], crc[15:8], crc[7:0]};
+    end
+endtask
 
 endmodule
