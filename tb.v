@@ -331,19 +331,26 @@ module tb_usb_pd;
         $finish;
     end
 
-task dma_respond;
-    input [31:0] data;
-    begin
-        @(posedge req);          // 等 TX 發 req
+// DMA 記憶體
+reg [31:0] dma_mem [0:255];
+
+// 回應 TX 的 req，address 自動累加
+integer dma_addr;
+
+initial begin
+    dma_addr = 0;
+    forever begin
+        @(posedge req);
         #0.1;
-        tx_dma_buf_i = data;
+        tx_dma_buf_i = dma_mem[dma_addr];
         ack = 1;
-        @(negedge req);          // 等 req 拉低
+        dma_addr = dma_addr + 1;
+        @(negedge req);
         #0.1;
         ack = 0;
         tx_dma_buf_i = 32'h0;
     end
-endtask
+end
      
 
 endmodule
