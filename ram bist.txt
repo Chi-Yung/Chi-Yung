@@ -1,0 +1,603 @@
+================================================================================
+         SRAM BIST (Built-In Self-Test) 模組完整分析報告
+================================================================================
+
+================================================================================
+第一部分：SRAM BIST 模組運作過程分析
+================================================================================
+
+【模組概覽】
+--------------------------------------------------------------------------------
+此模組名稱為 sram_bist_cm，是一個實現 March C- 演算法的 SRAM BIST 控制器。
+BIST (Built-In Self-Test) 的目的是在晶片內部自行對 SRAM 進行測試，
+不需要外部測試設備介入，能夠偵測製造過程中產生的記憶體缺陷。
+
+
+【參數設定】
+--------------------------------------------------------------------------------
+參數名稱         預設值    說明
+--------         ------    ----
+DATA_DEPTH       8192      SRAM 資料深度（共幾個 word）
+DATA_WIDTH       32        每個 word 的資料位元寬度
+MASK_WIDTH       4         Write Enable 遮罩位元寬度
+ADDR_WIDTH       12        位址位元寬度（2^12 = 4096，搭配 depth 使用）
+DATA_FF_OUT      1         SRAM 資料輸出是否加 Flip-Flop
+                           1 = 有加（延遲 1T），0 = 無加
+
+
+【介面定義】
+--------------------------------------------------------------------------------
+▌ SRAM 介面（對外連接實體 SRAM）
+  output wire                      sram_cen_o    // SRAM chip enable，低電位有效
+  output wire [(MASK_WIDTH-1):0]   sram_wen_o    // SRAM write enable，低電位有效
+  output wire [(ADDR_WIDTH-1):0]   sram_addr_o   // SRAM 位址
+  output wire [(DATA_WIDTH-1):0]   sram_d_o      // SRAM 資料輸入（寫入用）
+  input  wire [(DATA_WIDTH-1):0]   sram_q_i      // SRAM 資料輸出（讀取用）
+
+▌ 功能介面（正常操作時由外部邏輯控制）
+  input  wire                      sram_cen_i    // 功能 chip enable
+  input  wire [(MASK_WIDTH-1):0]   sram_wen_i    // 功能 write enable
+  input  wire [(ADDR_WIDTH-1):0]   sram_addr_i   // 功能位址
+  input  wire [(DATA_WIDTH-1):0]   sram_d_i      // 功能資料輸入
+
+▌ 測試介面
+  output wire   sram_bist_done_o   // 測試完成旗標
+  output reg    sram_tf_fail_o     // 測試失敗旗標（0=PASS, 1=FAIL）
+  input  wire   sram_bist_en_i     // 測試啟動訊號
+
+▌ 全域訊號
+  input  wire   clk                // SRAM 存取時鐘
+  input  wire   rst_n              // 全域重置，低電位有效
+
+
+【測試資料樣式（Pattern）】
+--------------------------------------------------------------------------------
+localparam PAT0 = {8{32'h0000_0000}};   // 全 0 樣式
+localparam PAT1 = {8{32'h5555_5555}};   // 01010101 交替樣式
+
+使用兩種互補樣式的原因：
+  - PAT0 (全0) 與 PAT1 (0x55555555) 涵蓋了 0→1 與 1→0 的轉換，
+    能有效偵測 Stuck-At Fault 及 Transition Fault。
+  - 0x55555555 代表二進位的 01010101...，相鄰 bit 互補，
+    可部分偵測相鄰 bit 之間的 Coupling Fault。
+
+寫入資料的產生邏輯：
+  assign bist_d = {DATA_WIDTH{(cs_1 | cs_3 | cs_5)}} ~^ data_ptn1;
+  
+  說明：
+  - cs_1, cs_3, cs_5 為寫入 pattern 1 的狀態
+  - cs_2, cs_4, cs_6 為寫入 pattern 0 的狀態
+  - 使用 XNOR (~^) 搭配 data_ptn1 來產生正確的寫入樣式
+  - cs_7 (done 前的最後讀取狀態) 會保留 cs_6 的資料供讀取比對
+
+
+【March C- 演算法說明】
+--------------------------------------------------------------------------------
+March C- 是一種廣泛使用的記憶體測試演算法，
+由 6 個 March Elements 組成（比 March C 少一個步驟），
+故稱 March C-（minus）。
+
+演算法表示式：
+  ↑(W0); ↑(R0,W1); ↑(R1,W0); ↓(R0,W1); ↓(R1,W0); ↓(R0)
+
+符號說明：
+  ↑   = 地址由低到高遞增（Upward）
+  ↓   = 地址由高到低遞減（Downward）
+  W0  = 寫入 0
+  W1  = 寫入 1
+  R0  = 讀取並驗證為 0
+  R1  = 讀取並驗證為 1
+
+可偵測的缺陷類型：
+  - SAF (Stuck-At Fault)：某個 bit 永遠卡在 0 或 1
+  - TF  (Transition Fault)：某個 bit 無法完成 0→1 或 1→0 的轉換
+  - CF  (Coupling Fault)：某個 bit 被另一個 bit 的操作影響（部分可測）
+  - AF  (Address Fault)：位址解碼錯誤導致存取到錯誤的 cell
+
+
+【狀態機（State Machine）詳細說明】
+--------------------------------------------------------------------------------
+狀態機使用 3-bit reg st_sram_bist [2:0]，共 8 個狀態（State 0 ~ State 7）
+
+State 0：idle（閒置）
+  - 等待 sram_bist_en_s[1] 被拉高
+  - sram_bist_en_s 為 sram_bist_en_i 經過兩級 FF 同步後的訊號
+  - 條件成立後進入 State 1
+
+State 1：↑(W0) — 遞增寫入 0
+  - 地址從最小值（0）開始，依序遞增
+  - 對每個地址寫入 Pattern 0（全0）
+  - 此步驟不做讀取，純粹初始化整個 SRAM
+  - 到達最大地址（hit_addr_max）後進入 State 2
+
+State 2：↑(R0,W1) — 遞增讀 0 驗證，再寫入 1
+  - 地址從最小值重新開始，依序遞增
+  - 讀取當前地址的值，驗證是否為 0（上一步寫入的值）
+  - 驗證後對同一地址寫入 Pattern 1（0x55555555）
+  - 到達最大地址後進入 State 3
+
+State 3：↑(R1,W0) — 遞增讀 1 驗證，再寫入 0
+  - 地址從最小值重新開始，依序遞增
+  - 讀取當前地址的值，驗證是否為 1（上一步寫入的值）
+  - 驗證後對同一地址寫入 Pattern 0
+  - 到達最大地址後進入 State 4
+
+State 4：↓(R0,W1) — 遞減讀 0 驗證，再寫入 1
+  - 地址從最大值開始，依序遞減
+  - 讀取當前地址的值，驗證是否為 0
+  - 驗證後對同一地址寫入 Pattern 1
+  - 到達最小地址（hit_addr_min）後進入 State 5
+
+State 5：↓(R1,W0) — 遞減讀 1 驗證，再寫入 0
+  - 地址從最大值開始，依序遞減
+  - 讀取當前地址的值，驗證是否為 1
+  - 驗證後對同一地址寫入 Pattern 0
+  - 到達最小地址後進入 State 6
+
+State 6：↓(R0) — 遞減讀 0 做最終驗證
+  - 地址從最大值開始，依序遞減
+  - 讀取當前地址的值，驗證是否為 0
+  - 此步驟只讀不寫
+  - 到達最小地址後進入 State 7
+
+State 7：done（完成）
+  - 所有測試步驟已完成
+  - sram_bist_done_o 被拉高，通知外部測試結束
+  - sram_tf_fail_o 保持最終的 PASS/FAIL 結果
+
+
+【地址控制邏輯】
+--------------------------------------------------------------------------------
+地址方向控制：
+  assign addr_dir = st_sram_bist[2];  // cs_4 | cs_5 | cs_6
+
+  st_sram_bist[2] = 0（State 0~3）→ 地址遞增（Upward）
+  st_sram_bist[2] = 1（State 4~6）→ 地址遞減（Downward）
+
+地址邊界偵測：
+  assign bist_addr_max = (bist_addr == (DATA_DEPTH - 1));  // 到達最大地址
+  assign bist_addr_min = (bist_addr == 0);                 // 到達最小地址
+
+  assign hit_addr_max = bist_addr_max & next_addr;   // 即將超過最大地址
+  assign hit_addr_min = bist_addr_min & next_addr;   // 即將低於最小地址
+
+地址更新規則（always block）：
+  if (~rst_n)                               → bist_addr <= {ADDR_WIDTH{1'b0}}（重置為0）
+  else if (cs_0 | enter_st_2 | enter_st_3) → bist_addr <= {ADDR_WIDTH{1'b0}}（從0開始）
+  else if (enter_st_4 | enter_st_5 | enter_st_6) → bist_addr <= DATA_DEPTH - 1（從最大開始）
+  else if (next_addr)                       → bist_addr <= addr_dir ?
+                                               (bist_addr - 1) : (bist_addr + 1)
+
+next_addr 訊號控制邏輯：
+  always @(negedge rst_n or posedge clk_bist)
+    if (~rst_n)                    → next_addr <= 1'b1
+    else if (enter_st_2 | cs_7)   → next_addr <= 1'b0
+    else if (cs_0 | cs_1 | enter_st_6 | cs_6) → next_addr <= 1'b1
+    else                          → next_addr <= ~next_addr
+
+  說明：next_addr 為 toggle 訊號，每個 clk_bist 切換一次，
+        代表「讀取週期」與「寫入週期/地址推進週期」的交替。
+
+
+【Power Saving — 時鐘閘控與輸出隔離】
+--------------------------------------------------------------------------------
+時鐘閘控（ICG）：
+  gck_afe u_gck_clk_bist (
+    .clk_out  (clk_bist),
+    .clk_in   (clk),
+    .clk_en   (1'b0),
+    .test_en  (sram_bist_en_s[1])
+  );
+
+  - BIST 未啟用時，clk_bist 被 gating 掉，BIST 邏輯不消耗動態功耗
+  - BIST 啟用（sram_bist_en_s[1] = 1）時，時鐘才開放
+
+SRAM Q 輸出隔離：
+  assign sram_q = sram_bist_en_s[1] ? sram_q_i : 'b0;
+  
+  - 非 BIST 模式時，sram_q 固定為 0，避免浮動訊號傳播到比對邏輯
+
+sram_bist_en 同步化：
+  always @(negedge rst_n or posedge clk)
+    if (~rst_n)
+      sram_bist_en_s[1:0] <= 2'b0;
+    else
+      sram_bist_en_s[1:0] <= {sram_bist_en_s[0], sram_bist_en_i};
+
+  - 使用兩級 FF 對 sram_bist_en_i 做同步，避免 metastability 問題
+
+
+【SRAM 介面多工切換】
+--------------------------------------------------------------------------------
+  assign sram_cen_o  = sram_bist_en_s[1] ? bist_cen                  : sram_cen_i;
+  assign sram_wen_o  = sram_bist_en_s[1] ? {MASK_WIDTH{bist_wen}}    : sram_wen_i;
+  assign sram_addr_o = sram_bist_en_s[1] ? bist_addr                 : sram_addr_i;
+  assign sram_d_o    = sram_bist_en_s[1] ? bist_d                    : sram_d_i;
+
+  - BIST 模式啟用時：SRAM 介面完全由 BIST 控制器接管
+  - BIST 模式關閉時：SRAM 介面由外部功能邏輯控制
+  - 這種設計稱為「透明 BIST」，不影響正常功能路徑
+
+bist_cen 與 bist_wen 產生：
+  assign bist_cen = cs_0 | cs_7;
+  // State 0 (idle) 和 State 7 (done) 時，不驅動 SRAM（cen 拉高=禁能）
+
+  assign bist_wen = ~((cs_1 | cs_2 | cs_3 | cs_4 | cs_5) & next_addr);
+  // 在需要寫入的狀態（State 1~5）且 next_addr=1 時，wen 拉低（致能寫入）
+
+
+【錯誤偵測邏輯】
+--------------------------------------------------------------------------------
+讀取比對觸發條件：
+  assign read_chk = next_addr & ~(cs_1 | (cs_6 & bist_addr_max));
+  
+  說明：
+  - next_addr=1 代表目前是讀取週期
+  - 排除 cs_1（State 1 只有寫入，沒有讀取）
+  - 排除 cs_6 且 bist_addr_max（最後一個讀取位址，timing 特殊處理）
+
+失敗旗標更新邏輯：
+  always @(negedge rst_n or posedge clk_bist)
+    if (~rst_n)
+      sram_tf_fail_o <= 1'b1;          // Reset 時預設 FAIL（安全起見）
+    else if (cs_1)
+      sram_tf_fail_o <= 1'b0;          // 進入測試時清除 fail 旗標
+    else if (sram_tf_fail_o)
+      sram_tf_fail_o <= 1'b1;          // 一旦 FAIL 就鎖存，不會被清除
+    else if (read_chk)
+      sram_tf_fail_o <= (sram_q != ~bist_d);  // 讀回值與預期不符則 FAIL
+
+  說明：
+  - sram_q 是 SRAM 讀出的實際資料
+  - ~bist_d 是預期應讀到的值（bist_d 為剛剛寫入的值取反）
+  - 一旦任何一個地址比對失敗，fail 旗標永遠保持 1 直到下次測試
+
+
+【完成旗標】
+--------------------------------------------------------------------------------
+  assign sram_bist_done_o = cs_7 & (~next_addr);
+
+  - 必須同時滿足：進入 State 7（cs_7=1）且 next_addr=0
+  - 確保最後一次讀取動作已完成才拉高 done
+  - 外部邏輯可透過此訊號得知測試已結束，並讀取 sram_tf_fail_o 的結果
+
+
+【完整測試時序流程】
+--------------------------------------------------------------------------------
+
+啟動訊號 sram_bist_en_i 拉高
+         |
+         v
+  [同步化] sram_bist_en_s[1] 拉高（經 2 個 clk cycle 延遲）
+         |
+         v
+  [State 0] idle
+  等待 sram_bist_en_s[1]
+         |
+         v
+  [State 1] ↑ W0：地址從 0 遞增到 DATA_DEPTH-1，每個地址寫入 0
+         |  (共 DATA_DEPTH 個 cycle)
+         |
+         v
+  [State 2] ↑ R0,W1：地址從 0 遞增，讀0驗證→寫1
+         |  (共 DATA_DEPTH * 2 個 cycle，讀寫交替)
+         |
+         v
+  [State 3] ↑ R1,W0：地址從 0 遞增，讀1驗證→寫0
+         |  (共 DATA_DEPTH * 2 個 cycle)
+         |
+         v
+  [State 4] ↓ R0,W1：地址從 DATA_DEPTH-1 遞減，讀0驗證→寫1
+         |  (共 DATA_DEPTH * 2 個 cycle)
+         |
+         v
+  [State 5] ↓ R1,W0：地址從 DATA_DEPTH-1 遞減，讀1驗證→寫0
+         |  (共 DATA_DEPTH * 2 個 cycle)
+         |
+         v
+  [State 6] ↓ R0：地址從 DATA_DEPTH-1 遞減，讀0驗證（只讀不寫）
+         |  (共 DATA_DEPTH 個 cycle)
+         |
+         v
+  [State 7] done
+  sram_bist_done_o = 1
+  sram_tf_fail_o = 最終 PASS(0) / FAIL(1)
+
+總測試所需 cycle 數（估算）：
+  DATA_DEPTH * 1  (State 1)
++ DATA_DEPTH * 2  (State 2)
++ DATA_DEPTH * 2  (State 3)
++ DATA_DEPTH * 2  (State 4)
++ DATA_DEPTH * 2  (State 5)
++ DATA_DEPTH * 1  (State 6)
+= DATA_DEPTH * 10
+= 8192 * 10 = 81,920 個 clk_bist cycles
+
+
+================================================================================
+第二部分：兩顆 SRAM 共用一個 BIST 電路的設計方案
+================================================================================
+
+【設計動機】
+--------------------------------------------------------------------------------
+原始設計中，每一顆 SRAM 都對應一個獨立的 BIST 控制器電路。
+當晶片上有多顆 SRAM 時，BIST 電路的面積開銷會成正比增加。
+
+解決方案：採用時間多工（Time Multiplexing）的方式，
+讓一個 BIST 控制器電路依序對多顆 SRAM 進行測試，
+以面積換取測試時間，降低整體電路面積。
+
+
+【核心設計概念】
+--------------------------------------------------------------------------------
+1. 新增 phase 旗標，記錄目前正在測哪顆 SRAM
+2. 新增 sram_sel 旗標，控制 SRAM I/O 的 MUX 切換
+3. State Machine 測試完第一顆後，重置地址並重跑一次 March C- 給第二顆
+4. 兩顆 SRAM 各自保留獨立的 fail 旗標
+5. 兩顆都完成後，才拉高 done
+
+
+【參數修改】
+--------------------------------------------------------------------------------
+原本的參數假設兩顆 SRAM 規格相同（DATA_DEPTH, DATA_WIDTH, ADDR_WIDTH 一致）。
+
+若兩顆 SRAM 規格相同：
+  - 不需要修改參數，直接共用同一套 parameter
+
+若兩顆 SRAM 規格不同：
+  - 需要將 DATA_DEPTH, DATA_WIDTH, ADDR_WIDTH, MASK_WIDTH 改成 runtime 可切換的 reg
+  - 或定義兩組 localparam，用 sram_sel 做 MUX 選擇
+  - 這是共用設計中最複雜的部分，本文以規格相同為前提說明
+
+
+【新增訊號定義】
+--------------------------------------------------------------------------------
+// 選擇目前測試哪顆 SRAM
+reg sram_sel;        // 0 = 測試 SRAM_0；1 = 測試 SRAM_1
+
+// 測試階段旗標（等同於 sram_sel，可合併）
+reg phase;           // 0 = 第一輪（SRAM_0）；1 = 第二輪（SRAM_1）
+
+// 兩顆 SRAM 各自的 fail 旗標
+reg sram0_tf_fail_o;
+reg sram1_tf_fail_o;
+
+// 兩顆 SRAM 各自的介面訊號
+// SRAM_0
+output wire                      sram0_cen_o;
+output wire [(MASK_WIDTH-1):0]   sram0_wen_o;
+output wire [(ADDR_WIDTH-1):0]   sram0_addr_o;
+output wire [(DATA_WIDTH-1):0]   sram0_d_o;
+input  wire [(DATA_WIDTH-1):0]   sram0_q_i;
+
+input  wire                      sram0_cen_i;
+input  wire [(MASK_WIDTH-1):0]   sram0_wen_i;
+input  wire [(ADDR_WIDTH-1):0]   sram0_addr_i;
+input  wire [(DATA_WIDTH-1):0]   sram0_d_i;
+
+// SRAM_1
+output wire                      sram1_cen_o;
+output wire [(MASK_WIDTH-1):0]   sram1_wen_o;
+output wire [(ADDR_WIDTH-1):0]   sram1_addr_o;
+output wire [(DATA_WIDTH-1):0]   sram1_d_o;
+input  wire [(DATA_WIDTH-1):0]   sram1_q_i;
+
+input  wire                      sram1_cen_i;
+input  wire [(MASK_WIDTH-1):0]   sram1_wen_i;
+input  wire [(ADDR_WIDTH-1):0]   sram1_addr_i;
+input  wire [(DATA_WIDTH-1):0]   sram1_d_i;
+
+
+【State Machine 修改方案】
+--------------------------------------------------------------------------------
+修改 State 7 的行為，不直接結束，而是判斷 phase：
+
+原本 State 7：
+  st_sram_bist <= 7;  // done，停在 State 7
+
+修改後 State 7：
+  if (phase == 1'b0) begin
+    // 第一顆測完，切換到第二顆，重新開始
+    phase    <= 1'b1;
+    sram_sel <= 1'b1;
+    st_sram_bist <= 3'd1;   // 回到 State 1 重跑 March C-
+    // 地址 reset 邏輯也需要在此觸發
+  end
+  else begin
+    // 第二顆也測完，真正結束
+    st_sram_bist <= 3'd7;   // 停在 State 7
+  end
+
+phase 初始化：
+  always @(negedge rst_n or posedge clk_bist)
+    if (~rst_n) begin
+      phase    <= 1'b0;
+      sram_sel <= 1'b0;
+    end
+    else if (cs_1 && phase == 1'b0 && sram_sel == 1'b0) begin
+      // 初次進入測試，保持 phase=0
+    end
+    else if (/* State 7 且 phase==0 */) begin
+      phase    <= 1'b1;
+      sram_sel <= 1'b1;
+    end
+
+
+【SRAM 介面 MUX 修改】
+--------------------------------------------------------------------------------
+需要將原本單一 SRAM 的介面改成根據 sram_sel 選擇驅動哪顆 SRAM：
+
+▌ SRAM_0 介面
+  assign sram0_cen_o  = (sram_bist_en_s[1] && sram_sel == 1'b0) ? bist_cen
+                                                                   : sram0_cen_i;
+  assign sram0_wen_o  = (sram_bist_en_s[1] && sram_sel == 1'b0) ? {MASK_WIDTH{bist_wen}}
+                                                                   : sram0_wen_i;
+  assign sram0_addr_o = (sram_bist_en_s[1] && sram_sel == 1'b0) ? bist_addr
+                                                                   : sram0_addr_i;
+  assign sram0_d_o    = (sram_bist_en_s[1] && sram_sel == 1'b0) ? bist_d
+                                                                   : sram0_d_i;
+
+▌ SRAM_1 介面
+  assign sram1_cen_o  = (sram_bist_en_s[1] && sram_sel == 1'b1) ? bist_cen
+                                                                   : sram1_cen_i;
+  assign sram1_wen_o  = (sram_bist_en_s[1] && sram_sel == 1'b1) ? {MASK_WIDTH{bist_wen}}
+                                                                   : sram1_wen_i;
+  assign sram1_addr_o = (sram_bist_en_s[1] && sram_sel == 1'b1) ? bist_addr
+                                                                   : sram1_addr_i;
+  assign sram1_d_o    = (sram_bist_en_s[1] && sram_sel == 1'b1) ? bist_d
+                                                                   : sram1_d_i;
+
+▌ 讀取資料 MUX（SRAM Q 選擇）
+  assign sram_q = sram_bist_en_s[1]
+                  ? (sram_sel ? sram1_q_i : sram0_q_i)
+                  : 'b0;
+  // BIST 模式下，根據 sram_sel 選擇要讀哪顆 SRAM 的輸出
+
+
+【Fail 旗標修改】
+--------------------------------------------------------------------------------
+原本只有一個 sram_tf_fail_o，修改為兩個獨立的 fail reg：
+
+  always @(negedge rst_n or posedge clk_bist)
+    if (~rst_n) begin
+      sram0_tf_fail_o <= 1'b1;
+      sram1_tf_fail_o <= 1'b1;
+    end
+    else if (cs_1 && sram_sel == 1'b0)
+      sram0_tf_fail_o <= 1'b0;          // 開始測 SRAM_0 時清除
+    else if (cs_1 && sram_sel == 1'b1)
+      sram1_tf_fail_o <= 1'b0;          // 開始測 SRAM_1 時清除
+    else if (sram_sel == 1'b0) begin
+      // 正在測 SRAM_0
+      if (sram0_tf_fail_o)
+        sram0_tf_fail_o <= 1'b1;        // 鎖存 fail
+      else if (read_chk)
+        sram0_tf_fail_o <= (sram_q != ~bist_d);
+    end
+    else begin
+      // 正在測 SRAM_1
+      if (sram1_tf_fail_o)
+        sram1_tf_fail_o <= 1'b1;        // 鎖存 fail
+      else if (read_chk)
+        sram1_tf_fail_o <= (sram_q != ~bist_d);
+    end
+
+  說明：
+  - 兩顆 SRAM 的 fail 旗標完全獨立，互不影響
+  - 測試完成後，外部可分別讀取 sram0_tf_fail_o 和 sram1_tf_fail_o
+  - 知道是哪顆 SRAM 有問題，而非只知道「有其中一顆壞了」
+
+
+【Done 旗標修改】
+--------------------------------------------------------------------------------
+原本：
+  assign sram_bist_done_o = cs_7 & (~next_addr);
+
+修改後：
+  assign sram_bist_done_o = cs_7 & (~next_addr) & (phase == 1'b1);
+  // 必須 phase=1（第二顆也測完）才拉高 done
+
+  或者另外提供各自的 done：
+  assign sram0_bist_done_o = cs_7 & (~next_addr) & (phase == 1'b0);
+  // SRAM_0 測完的瞬間
+  assign sram1_bist_done_o = cs_7 & (~next_addr) & (phase == 1'b1);
+  // SRAM_1 測完的瞬間（即全部完成）
+
+
+【地址重置邏輯修改】
+--------------------------------------------------------------------------------
+原本地址在進入 State 1 時從 0 開始，進入 State 4 時從最大值開始。
+共用設計中，當 phase 從 0 切換到 1（即從 State 7 回到 State 1）時，
+需要確保地址也正確重置為 0。
+
+修改 always block：
+  else if (cs_0 | enter_st_2 | enter_st_3 | (cs_7 & phase == 1'b0))
+    bist_addr <= {ADDR_WIDTH{1'b0}};   // 新增：切換到第二顆時也重置地址
+
+（enter_st_X 代表「即將進入 State X」的組合邏輯訊號）
+
+
+【完整共用 BIST 測試流程】
+--------------------------------------------------------------------------------
+
+啟動 sram_bist_en_i
+         |
+         v
+  phase=0, sram_sel=0
+         |
+         v
+  [State 0] idle，等待啟動
+         |
+         v
+  [State 1~6] 對 SRAM_0 執行完整 March C- 測試
+      ↑(W0) → ↑(R0,W1) → ↑(R1,W0) → ↓(R0,W1) → ↓(R1,W0) → ↓(R0)
+      過程中若有比對失敗 → sram0_tf_fail_o 拉高並鎖存
+         |
+         v
+  [State 7 且 phase=0]
+      記錄 sram0_tf_fail_o 結果
+      切換：phase=1, sram_sel=1
+      地址重置，回到 State 1
+         |
+         v
+  [State 1~6] 對 SRAM_1 執行完整 March C- 測試
+      ↑(W0) → ↑(R0,W1) → ↑(R1,W0) → ↓(R0,W1) → ↓(R1,W0) → ↓(R0)
+      過程中若有比對失敗 → sram1_tf_fail_o 拉高並鎖存
+         |
+         v
+  [State 7 且 phase=1]
+      sram_bist_done_o = 1（全部完成）
+      sram0_tf_fail_o = SRAM_0 的 PASS(0)/FAIL(1)
+      sram1_tf_fail_o = SRAM_1 的 PASS(0)/FAIL(1)
+
+
+【面積與時間取捨分析】
+--------------------------------------------------------------------------------
+
+                    ┌─────────────────┬─────────────────────┐
+                    │  原始設計        │  共用 BIST 設計      │
+                    │  (2 個 BIST)    │  (1 個 BIST)        │
+┌───────────────────┼─────────────────┼─────────────────────┤
+│ BIST 控制器面積   │  2x             │  1x + 少量 MUX      │
+│ 測試時間          │  兩顆同時跑     │  兩顆依序跑（2倍）   │
+│                   │  約 81,920 cycles│  約 163,840 cycles  │
+│ Fail 獨立性       │  完全獨立       │  需分 reg 儲存       │
+│ 設計複雜度        │  低             │  中（多 phase/sel）  │
+│ 可測試 SRAM 數量  │  固定           │  可擴展至 N 顆       │
+│ 規格不同的支援    │  天然支援       │  需額外處理參數切換  │
+└───────────────────┴─────────────────┴─────────────────────┘
+
+延伸設計：若要支援 N 顆 SRAM 共用，
+  - sram_sel 改為 $clog2(N) bits
+  - fail reg 改為 N bits 的 reg 陣列
+  - MUX 改為 N 選 1
+
+
+【注意事項與潛在風險】
+--------------------------------------------------------------------------------
+1. Timing 問題：
+   MUX 的加入會在 SRAM 介面路徑上增加一個 MUX 延遲，
+   需確認 SRAM 的 timing constraint 仍然滿足。
+
+2. 功能模式隔離：
+   BIST 測試期間，兩顆 SRAM 的功能介面都被切斷。
+   若系統不允許兩顆同時停止服務，需要設計更複雜的隔離機制。
+
+3. Isolation Cell 設計：
+   若 SRAM 位於不同的 power domain，
+   每顆 SRAM 的隔離 cell 需要各自獨立控制，
+   不能因為另一顆在 BIST 而影響未測試的那顆。
+
+4. sram_q 的同步問題：
+   切換 sram_sel 後，SRAM 讀取的資料需要至少一個 cycle 才能穩定，
+   State Machine 的設計需要考慮此 pipeline delay。
+
+5. 規格不同的兩顆 SRAM：
+   若 DATA_DEPTH 不同，地址比對邏輯（bist_addr_max, bist_addr_min）
+   的參考值需要根據 sram_sel 動態切換，
+   這會讓設計複雜度顯著提升。
+
+
+================================================================================
+END OF DOCUMENT
+================================================================================
