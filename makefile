@@ -20,9 +20,15 @@ LOGS        := dashboard.log datasheet.log html.log spyglass.log
 
 all: run
 
-# 執行 lint flow，將 TOP_MODULE 以 -tclargs 傳給 run_shell.tcl
+# 動態產生的 wrapper tcl（設定 top_module 後 source 原本的 run_shell.tcl）
+WRAPPER     := .run_top.tcl
+
+# 執行 lint flow：先產生 wrapper，再用 -tcl 執行 wrapper（-tcl 吃檔案最保險）
 run:
-	$(SG_SHELL) -tcl $(TCL_SCRIPT) -tclargs $(TOP_MODULE)
+	@echo "set top_module $(TOP_MODULE)"  > $(WRAPPER)
+	@echo "source $(TCL_SCRIPT)"         >> $(WRAPPER)
+	$(SG_SHELL) -tcl $(WRAPPER)
+	@rm -f $(WRAPPER)
 
 # 只清除 log，保留 project 檔
 clean:
