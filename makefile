@@ -8,8 +8,10 @@ SG_SHELL    := sg_shell
 # 要執行的 tcl script
 TCL_SCRIPT  := run_shell.tcl
 
-# top module 名稱（需與 run_shell.tcl 內一致，用於清除 .prj）
-TOP_MODULE  := test_proc
+# top module 名稱：預設 test_proc
+# 可用 `make run top_module=top` 覆寫（小寫變數優先）
+top_module  ?= test_proc
+TOP_MODULE  := $(top_module)
 
 # sg_shell log（依你 script 內容調整）
 LOGS        := dashboard.log datasheet.log html.log spyglass.log
@@ -18,9 +20,9 @@ LOGS        := dashboard.log datasheet.log html.log spyglass.log
 
 all: run
 
-# 執行 lint flow
+# 執行 lint flow，將 TOP_MODULE 以 -tclargs 傳給 run_shell.tcl
 run:
-	$(SG_SHELL) -tcl $(TCL_SCRIPT)
+	$(SG_SHELL) -tcl $(TCL_SCRIPT) -tclargs $(TOP_MODULE)
 
 # 只清除 log，保留 project 檔
 clean:
