@@ -1,24 +1,32 @@
-# ==== SpyGlass Makefile ====
+# ============================================================
+# Makefile for running SpyGlass (sg_shell) lint flow
+# ============================================================
 
-SPYGLASS     := sg_shell
-TCL_TEMPLATE := run_lint.tcl
-GEN_DIR      := gen
-GEN_TCL      := $(GEN_DIR)/run_lint_$(TOP_MODULE).tcl
-LOG_DIR      := logs
-LOG_FILE     := $(LOG_DIR)/spyglass_$(TOP_MODULE)_$(shell date +%Y%m%d_%H%M%S).log
+# SpyGlass shell 執行檔（若不在 PATH 中，改成完整路徑）
+SG_SHELL    := sg_shell
 
-.PHONY: lint clean help
+# 要執行的 tcl script
+TCL_SCRIPT  := run_shell.tcl
 
-lint:
-ifndef TOP_MODULE
-	$(error 請指定 TOP_MODULE，例如: make lint TOP_MODULE=my_top)
-endif
-	@mkdir -p $(GEN_DIR) $(LOG_DIR)
-	@sed 's/{TOP_module}/$(TOP_MODULE)/g' $(TCL_TEMPLATE) > $(GEN_TCL)
-	$(SPYGLASS) -tcl $(GEN_TCL) -batch -log $(LOG_FILE)
+# top module 名稱（需與 run_shell.tcl 內一致，用於清除 .prj）
+TOP_MODULE  := test_proc
 
+# sg_shell log（依你 script 內容調整）
+LOGS        := dashboard.log datasheet.log html.log spyglass.log
+
+.PHONY: all run clean distclean
+
+all: run
+
+# 執行 lint flow
+run:
+	$(SG_SHELL) -tcl $(TCL_SCRIPT)
+
+# 只清除 log，保留 project 檔
 clean:
-	rm -rf $(GEN_DIR) $(LOG_DIR) spyglass_reports rule_status* *.rpt sg_*
+	rm -f $(LOGS)
 
-help:
-	@echo "用法: make lint TOP_MODULE=<top層模組名稱>"
+# 清除 log + project 檔 + spyglass 產生的其他資料夾
+distclean: clean
+	rm -rf $(TOP_MODULE).prj
+	rm -rf spyglass_reports spyglass_work
